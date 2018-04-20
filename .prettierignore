@@ -1,0 +1,6 @@
+.git/
+.vscode/
+lib/
+node_modules/
+\.*
+*\.json

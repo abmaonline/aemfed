@@ -1,0 +1,74 @@
+{
+  "name": "aemfed",
+  "version": "0.0.1",
+  "description": "Upload front-end changes into AEM and refresh relevant resources in the page for easier development.",
+  "author": {
+    "name": "Matthijs Abma"
+  },
+  "repository": "abmaonline/aemfed",
+  "license": "MIT",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "bin": "bin/aemfed.js",
+  "files": [
+    "bin",
+    "lib"
+  ],
+  "dependencies": {
+    "aemsync": "abmaonline/aemsync#ac0ecc4",
+    "browser-sync": "^2.23.6",
+    "chalk": "^1.1.3",
+    "graceful-fs": "^4.1.9",
+    "less-tree": "abmaonline/less-tree#6168498",
+    "minimist": "^1.2.0",
+    "opn": "^4.0.2",
+    "path": "^0.12.7",
+    "recursive-readdir": "^2.2.1",
+    "request": "^2.81.0",
+    "request-promise-native": "^1.0.5",
+    "tree-model": "^1.0.6"
+  },
+  "devDependencies": {
+    "@types/chokidar": "^1.7.5",
+    "@types/graceful-fs": "^4.1.2",
+    "@types/micromatch": "^3.1.0",
+    "@types/minimist": "^1.2.0",
+    "@types/node": "^9.4.5",
+    "@types/opn": "^5.1.0",
+    "@types/recursive-readdir": "^2.2.0",
+    "@types/request": "^2.47.0",
+    "@types/request-promise-native": "^1.0.13",
+    "@types/vinyl": "^2.0.2",
+    "husky": "^0.14.3",
+    "precise-commits": "^1.0.2",
+    "prettier": "1.11.0",
+    "tslint": "^5.9.1",
+    "tslint-config-prettier": "^1.10.0",
+    "typescript": "^2.7.2"
+  },
+  "scripts": {
+    "precommit": "precise-commits --check-only && npm run tslint-hook && npm run build",
+    "prepare": "npm run build",
+    "prettier": "prettier --write \"src/**/*.ts\"",
+    "tslint": "npm run tslint-hook -- --force",
+    "tslint-hook": "tslint -c tslint.json \"src/**/*.ts\"",
+    "build": "tsc",
+    "watch": "tsc --watch --pretty",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "aem",
+    "adobe",
+    "aemsync",
+    "browsersync",
+    "browser sync",
+    "livereload",
+    "live reload",
+    "watch",
+    "inject",
+    "sync",
+    "frontend",
+    "front-end",
+    "front end"
+  ]
+}

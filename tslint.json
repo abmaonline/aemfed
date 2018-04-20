@@ -1,0 +1,24 @@
+{
+  "extends": [
+    "tslint:latest", 
+    "tslint-config-prettier"
+  ],
+  "rules": {
+    "class-name": true,
+    "comment-format": [
+      true, 
+      "check-space"
+    ],
+    "no-console": false,
+    "no-internal-module": true,
+    "no-null-keyword": true,
+    "no-var-keyword": true,
+    "prefer-const": true,
+    "jsdoc-format": true
+  },
+  "linterOptions": {
+    "exclude": [
+      "src/**/*.d.ts"
+    ]
+  }
+}

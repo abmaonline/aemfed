@@ -1,0 +1,155 @@
+import { Pusher, Watcher } from "aemsync";
+import chalk from "chalk";
+import gfs from "graceful-fs";
+import minimist from "minimist";
+import opn from "opn";
+import path from "path";
+import url from "url";
+import * as bsWrapper from "./bs-wrapper";
+
+import packageInfo from "./../package.json";
+
+function separate() {
+  console.log("---------------------------------------");
+}
+
+// Command line options
+const MSG_HELP = `Usage: aemfed [OPTIONS]
+Options:
+  -t targets           Default is http://admin:admin@localhost:4502
+  -w path_to_watch     Default is current
+  -e exclude_filter    Anymatch exclude filter; disabled by default
+  -i sync_interval     Update interval in milliseconds; default is 100
+  -o open_page         Browser page to be opened after successful launch; default is "false".
+  -b browser           Browser where page should be opened in; this parameter is platform dependent; for example, Chrome is "google chrome" on OS X, "google-chrome" on Linux and "chrome" on Windows; default is "google chrome"
+  -h                   Displays this screen
+  -v                   Displays version of this package`;
+
+const bsInstanceName = "aemfed";
+
+function reloadBrowser(
+  error: string,
+  host: string,
+  items: Pusher.PusherItem[]
+) {
+  bsWrapper.reload(bsInstanceName, items);
+}
+
+export function init(): void {
+  "use strict";
+
+  const args = minimist(process.argv.slice(2));
+
+  // Show help
+  if (args.h) {
+    console.log(MSG_HELP);
+    return;
+  }
+
+  // Show version
+  if (args.v) {
+    console.log(packageInfo.version);
+    return;
+  }
+
+  const workingDirs: string[] = [];
+  const dirs = args.w ? args.w : ".";
+  dirs.split(",").forEach((dir: string) => {
+    const absDir = path.resolve(dir);
+    if (!gfs.existsSync(absDir)) {
+      console.log("Invalid path, so skipping:", chalk.yellow(absDir));
+    } else {
+      workingDirs.push(absDir);
+    }
+  });
+
+  if (workingDirs.length === 0) {
+    console.log("No valid paths found in: ", chalk.yellow(args.w));
+    return;
+  }
+
+  const targets: string = args.t || "http://admin:admin@localhost:4502";
+  const pushInterval: number = args.i || 100;
+  const exclude: string = args.e || "";
+  const startPage: string = args.o || "false";
+  const startBrowser: string = args.browser || "google chrome";
+
+  separate();
+  console.log("Working dirs:", workingDirs);
+  console.log("Targets:", targets);
+  console.log("Interval:", pushInterval);
+  console.log("Exclude:", exclude);
+  separate();
+
+  // Config BrowserSync
+  const targetList = targets.split(",");
+  if (targetList.length > 1) {
+    console.log(
+      chalk.cyan(
+        "Warning: multiple targets, so for now only the first one is proxied!"
+      )
+    );
+  }
+
+  // use string because the regex object maintains state, so can't be reused safely
+  const styleLinkPattern =
+    '(<link rel="stylesheet" href="/[^">]*?)(.min)?(.[0-9a-f]{32})?(.css"[^>]*>)';
+  // TODO support for multiple servers should do something here
+  bsWrapper.create({
+    bsOptions: {
+      proxy: {
+        target: targetList[0]
+      },
+      rewriteRules: [
+        {
+          fn: (req, res, matchedLinkElement) => {
+            const regex = new RegExp(styleLinkPattern, "i"); // g is not needed since we work with single item
+            const match = regex.exec(matchedLinkElement);
+            if (match) {
+              // Return the part w/o .min and .hash for easier matching when injecting
+              // TODO add hash as qs param as cache buster?
+              return match[1] + match[4];
+            } else {
+              console.warn(
+                "Could not rematch " +
+                  matchedLinkElement +
+                  " to rewrite url w/o .min and .hash"
+              );
+              return matchedLinkElement;
+            }
+          },
+          match: new RegExp(styleLinkPattern, "gi")
+        }
+      ]
+    },
+    jcrContentRoots: workingDirs,
+    name: bsInstanceName,
+    server: targetList[0]
+  });
+
+  // Start aemsync
+  const pusher = new Pusher(targetList, 600, reloadBrowser);
+  const watcher = new Watcher();
+
+  // Initialize queue processing
+  pusher.start();
+
+  // Watch over workingDirs
+  watcher.watch(workingDirs, exclude, localPath => {
+    // This is before processing, so we can determine here what to do
+
+    // TODO is this timeout needed for the interval? Pusher has it's own option for an interval?
+    // Add item to Pusher's queue when a change is detected
+    setTimeout(() => {
+      pusher.enqueue(localPath);
+    }, pushInterval);
+  });
+
+  if (startPage !== "false") {
+    opn(startPage, {
+      app: startBrowser
+    });
+  }
+
+  separate();
+}
