@@ -1,6 +1,6 @@
 # aemfed
 
-Speed up your AEM front-end development using [aemsync](https://www.npmjs.com/package/aemsync), [BrowserSync](https://www.npmjs.com/package/browser-sync) and [this]().
+Speed up your AEM front-end development using [aemsync](https://www.npmjs.com/package/aemsync), [BrowserSync](https://www.npmjs.com/package/browser-sync) and [this](https://github.com/abmaonline/aemfed).
 
 ## Features
 
@@ -49,6 +49,8 @@ If you have a `package.json` in your project, add it as a script
 ```sh
 npm run aemfed
 ```
+
+Once started, connect your browser to the local access URL and port provided by BrowserSync, so you load the pages with the BrowserSync scripts and reloading and injecting is working without any other plugins.
 
 ## Requirements
 
