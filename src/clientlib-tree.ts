@@ -34,7 +34,7 @@ interface ILink {
 }
 
 export interface IClientlibTreeConfig {
-  server?: string;
+  server: string;
   dumpLibsPath?: string;
 }
 
@@ -44,8 +44,8 @@ export class ClientlibTree {
   private libs: ILibs;
 
   constructor(config?: IClientlibTreeConfig) {
-    config = config || {};
-    this.server = config.server || "http://admin:admin@localhost:4502";
+    config = config || { server: "http://admin:admin@localhost:4502" };
+    this.server = config.server;
     this.path = config.dumpLibsPath || "/libs/granite/ui/content/dumplibs.html";
     this.libs = {};
   }

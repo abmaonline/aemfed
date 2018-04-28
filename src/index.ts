@@ -25,15 +25,17 @@ Options:
   -h                   Displays this screen
   -v                   Displays version of this package`;
 
-const bsInstanceName = "aemfed";
-
 function reloadBrowser(
   error: string,
   host: string,
   inputList: string[],
   packItems: Pipeline.PackItem[]
 ) {
-  bsWrapper.reload(bsInstanceName, inputList);
+  if (!error) {
+    bsWrapper.reload(host, inputList);
+  } else {
+    console.error(host + ": Error when pushing pack: ", error);
+  }
 }
 
 export function init(): void {
@@ -69,6 +71,7 @@ export function init(): void {
     return;
   }
 
+  // TODO make some sort of defaults file and get defaults from there (and use in all modules)
   const targets: string = args.t || "http://admin:admin@localhost:4502";
   const pushInterval: number = args.i || 100;
   const exclude: string = args.e || "";
@@ -94,13 +97,9 @@ export function init(): void {
 
   // use string because the regex object maintains state, so can't be reused safely
   const styleLinkPattern =
-  // TODO support for multiple servers should do something here
     '(<link rel="stylesheet" href="/[^">]*?)(.min)?(.[0-9a-f]{32})?(.css)("[^>]*>)';
   bsWrapper.create({
     bsOptions: {
-      proxy: {
-        target: targetList[0]
-      },
       rewriteRules: [
         {
           fn: (req, res, matchedLinkElement) => {
@@ -126,8 +125,7 @@ export function init(): void {
       ]
     },
     jcrContentRoots: workingDirs,
-    name: bsInstanceName,
-    server: targetList[0]
+    servers: targetList
   });
 
   // Start aemsync
