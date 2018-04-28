@@ -43,10 +43,11 @@ export function create(args: IWrapperConfig): Promise<void> {
   args.servers.forEach((server, index) => {
     // host as returned by aemsync onPushEnd
     const host = server.substring(server.indexOf("@") + 1);
+    const name = host;
     // TODO check if server is online? Or poll in between and
     const instance: Instance = {
-      clientlibTree: new ClientlibTree({ server }),
-      name: host,
+      clientlibTree: new ClientlibTree({ name, server }),
+      name,
       online: true,
       port: port + index * 2, // Claim numbers for proxy and ui
       server
@@ -75,32 +76,48 @@ export function create(args: IWrapperConfig): Promise<void> {
       );
       console.log("---------------------------------------");
 
-      // Create bs instances
-      // TODO do something with presentation of different bs instances (clear mapping of server -> proxy)
-
-      // TODO Make creation serial using init callback and promises (better in output)
+      // Chain creation promises
+      let promise = Promise.resolve();
       hosts.forEach(host => {
         const instance = instances[host];
-        // Create bs instance
-        const bs = browserSync.create(instance.name);
-        // Set server specific settings
-        bsOptions.proxy = { target: instance.server };
-        bsOptions.port = instance.port;
-        bsOptions.ui = {
-          port: instance.port + 1
-        };
-
-        bs.init(bsOptions, (unknown, data) => {
-          // Callback:
-          //    console.log(data.options.get("urls").get("ui"));
-          //    console.log(data.options.get("urls").get("ui-external"));
-          //    console.log(bs.getOption("urls"));
+        // Create bs instance and add to promise chain to make it serial
+        promise = promise.then(() => {
+          createBsInstancePromise(instance, bsOptions);
         });
       });
+      return promise;
     })
     .catch(reason => {
       console.log(`Init rejected: ${reason}`);
     });
+}
+
+function createBsInstancePromise(
+  instance: Instance,
+  bsOptions: browserSync.Options
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const bs = browserSync.create(instance.name);
+    // Set server specific settings
+    // TODO clone options first?
+    bsOptions.proxy = { target: instance.server };
+    bsOptions.port = instance.port;
+    bsOptions.ui = {
+      port: instance.port + 1
+    };
+
+    bs.init(bsOptions, (err, data) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+      // Callback:
+      //    console.log(data.options.get("urls").get("ui"));
+      //    console.log(data.options.get("urls").get("ui-external"));
+      //    console.log(bs.getOption("urls"));
+    });
+  });
 }
 
 export function reload(host: string, inputList: string[]): void {
@@ -195,7 +212,10 @@ export function reload(host: string, inputList: string[]): void {
       sw = Date.now();
       // TODO reuse objects and only reinit?
       const promises = [];
-      instance.clientlibTree = new ClientlibTree({ server: instance.server });
+      instance.clientlibTree = new ClientlibTree({
+        name: instance.name,
+        server: instance.server
+      });
       promises.push(instance.clientlibTree.init());
       // DOn't update style three, since it happened in the prvious step (if there were any less/css/csstxt changes)
       // TODO maybe leave it in, as a catch-all in case we miss something when updating the file tree

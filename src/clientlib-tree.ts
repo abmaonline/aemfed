@@ -34,17 +34,24 @@ interface ILink {
 }
 
 export interface IClientlibTreeConfig {
+  name: string;
   server: string;
   dumpLibsPath?: string;
 }
 
 export class ClientlibTree {
+  private name: string;
   private server: string;
   private path: string;
   private libs: ILibs;
 
   constructor(config?: IClientlibTreeConfig) {
-    config = config || { server: "http://admin:admin@localhost:4502" };
+    // TODO get default name from server/target, using util?
+    config = config || {
+      name: "localhost:4502",
+      server: "http://admin:admin@localhost:4502"
+    };
+    this.name = config.name;
     this.server = config.server;
     this.path = config.dumpLibsPath || "/libs/granite/ui/content/dumplibs.html";
     this.libs = {};
@@ -55,13 +62,17 @@ export class ClientlibTree {
 
     let swInner = Date.now();
     return rpn(this.server + this.path).then((html: string) => {
-      console.log("Get data from server: " + (Date.now() - swInner) + " ms");
+      console.log(
+        this.name + ": Get data from server: " + (Date.now() - swInner) + " ms"
+      );
 
       swInner = Date.now();
       this.libs = this.processHtmlRegex(html);
-      console.log("Process data: " + (Date.now() - swInner) + " ms");
+      console.log(
+        this.name + ": Process data: " + (Date.now() - swInner) + " ms"
+      );
 
-      console.log("Clientlib tree: " + (Date.now() - sw) + " ms");
+      console.log(this.name + ": Clientlib tree: " + (Date.now() - sw) + " ms");
       // console.log('clientlibs:', Object.keys(this.libs).length);
     });
 
@@ -177,7 +188,7 @@ export class ClientlibTree {
           } else if (type.text === "CSS") {
             lib.css = type.href;
           } else {
-            console.log("UNKNOWN TYPE: " + type.text);
+            console.log(this.name + ": UNKNOWN TYPE: " + type.text);
           }
         });
 
@@ -208,7 +219,7 @@ export class ClientlibTree {
         return lib;
       } else {
         // Row w/o a name?
-        console.log("Row w/o a name: " + row);
+        console.log(this.name + ": Row w/o a name: " + row);
       }
     } else {
       // Mismatch for columns, should only be in case of table header
