@@ -94,8 +94,8 @@ export function init(): void {
 
   // use string because the regex object maintains state, so can't be reused safely
   const styleLinkPattern =
-    '(<link rel="stylesheet" href="/[^">]*?)(.min)?(.[0-9a-f]{32})?(.css"[^>]*>)';
   // TODO support for multiple servers should do something here
+    '(<link rel="stylesheet" href="/[^">]*?)(.min)?(.[0-9a-f]{32})?(.css)("[^>]*>)';
   bsWrapper.create({
     bsOptions: {
       proxy: {
@@ -108,8 +108,10 @@ export function init(): void {
             const match = regex.exec(matchedLinkElement);
             if (match) {
               // Return the part w/o .min and .hash for easier matching when injecting
-              // TODO add hash as qs param as cache buster?
-              return match[1] + match[4];
+              // Add cache buster based on bs Reloader.prototype.generateUniqueString
+              return (
+                match[1] + match[4] + "?browsersync=" + Date.now() + match[5]
+              );
             } else {
               console.warn(
                 "Could not rematch " +
