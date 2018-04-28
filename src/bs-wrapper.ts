@@ -1,5 +1,6 @@
-import { Pusher, Watcher } from "aemsync";
+import { Pipeline, Watcher } from "aemsync";
 import browserSync from "browser-sync";
+import gfs from "graceful-fs";
 import path from "path";
 import { ClientlibTree, IClientlibTreeConfig, ILib } from "./clientlib-tree";
 import { StyleTree } from "./style-tree";
@@ -65,7 +66,7 @@ export function create(
     });
 }
 
-export function reload(instanceName: string, items: Pusher.PusherItem[]): void {
+export function reload(instanceName: string, inputList: string[]): void {
   // Get current bs based on name
   const bs = browserSync.get(instanceName);
 
@@ -78,22 +79,25 @@ export function reload(instanceName: string, items: Pusher.PusherItem[]): void {
   const csstxtPaths: string[] = [];
   const specialPaths: string[] = [];
 
-  items.forEach(item => {
+  inputList.forEach(absolutePath => {
     // console.log('item', item);
-    if (item && item.localPath) {
-      if (/\.(css|less|scss)$/.test(item.localPath)) {
-        cssPaths.push(item.localPath);
-      } else if (/\.(js)$/.test(item.localPath)) {
+    if (absolutePath) {
+      if (/\.(css|less|scss)$/.test(absolutePath)) {
+        cssPaths.push(absolutePath);
+      } else if (/\.(js)$/.test(absolutePath)) {
         js = true;
-      } else if (/\.(html|jsp)$/.test(item.localPath)) {
+      } else if (/\.(html|jsp)$/.test(absolutePath)) {
         html = true;
-      } else if (/css\.txt$/.test(item.localPath)) {
-        csstxtPaths.push(item.localPath);
-      } else if (item.isDirectory) {
-        // In packager special files are turned into dirs (.content.xml for example)
-        specialPaths.push(item.localPath);
+      } else if (/css\.txt$/.test(absolutePath)) {
+        csstxtPaths.push(absolutePath);
       } else {
-        other = true;
+        // In packager special files are turned into dirs (.content.xml for example)
+        const stat = gfs.statSync(absolutePath);
+        if (stat.isDirectory()) {
+          specialPaths.push(absolutePath);
+        } else {
+          other = true;
+        }
       }
     }
   });

@@ -15,7 +15,7 @@
     "lib"
   ],
   "dependencies": {
-    "aemsync": "abmaonline/aemsync#ac0ecc4",
+    "aemsync": "abmaonline/aemsync#8cb74cc",
     "browser-sync": "^2.23.6",
     "chalk": "^1.1.3",
     "graceful-fs": "^4.1.9",

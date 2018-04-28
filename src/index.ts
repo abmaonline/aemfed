@@ -1,4 +1,4 @@
-import { Pusher, Watcher } from "aemsync";
+import { Pipeline, Watcher } from "aemsync";
 import chalk from "chalk";
 import gfs from "graceful-fs";
 import minimist from "minimist";
@@ -30,9 +30,10 @@ const bsInstanceName = "aemfed";
 function reloadBrowser(
   error: string,
   host: string,
-  items: Pusher.PusherItem[]
+  inputList: string[],
+  packItems: Pipeline.PackItem[]
 ) {
-  bsWrapper.reload(bsInstanceName, items);
+  bsWrapper.reload(bsInstanceName, inputList);
 }
 
 export function init(): void {
@@ -128,22 +129,30 @@ export function init(): void {
   });
 
   // Start aemsync
-  const pusher = new Pusher(targetList, 600, reloadBrowser);
-  const watcher = new Watcher();
-
+  const pipelineArgs: Pipeline.Args = {
+    interval: 600,
+    onPushEnd: reloadBrowser,
+    targets: targetList
+  };
+  const pipeline = new Pipeline(pipelineArgs);
   // Initialize queue processing
-  pusher.start();
+  pipeline.start();
 
   // Watch over workingDirs
-  watcher.watch(workingDirs, exclude, localPath => {
-    // This is before processing, so we can determine here what to do
-
-    // TODO is this timeout needed for the interval? Pusher has it's own option for an interval?
-    // Add item to Pusher's queue when a change is detected
-    setTimeout(() => {
-      pusher.enqueue(localPath);
-    }, pushInterval);
-  });
+  const watcher = new Watcher();
+  const watcherArgs: Watcher.Args = {
+    callback: localPath => {
+      // This is before processing, so we can determine here what to do
+      // TODO is this timeout needed for the interval? Pipeline has it's own option for an interval?
+      // Add item to Pipeline's queue when a change is detected
+      setTimeout(() => {
+        pipeline.enqueue(localPath);
+      }, pushInterval);
+    },
+    exclude,
+    workingDirs
+  };
+  watcher.watch(watcherArgs);
 
   if (startPage !== "false") {
     opn(startPage, {
