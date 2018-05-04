@@ -57,4 +57,8 @@ Once started, connect your browser to the local access URL and port provided by 
 * Works best with a recent version of node/npm, but tested with node 6.x
 * Tested on AEM 6.1 and 6.3
 
+## Isues
+
+* When sending a clientlib to BrowserSync that is not included in the page, all styling is reloaded. Issue in BrowserSync, will be fixed in future release: [#1505](https://github.com/BrowserSync/browser-sync/issues/1505)
+
 Thanks to the [BrowserSync](https://www.npmjs.com/package/browser-sync) team, to [gavoja](https://github.com/gavoja) for [aemsync](https://www.npmjs.com/package/aemsync) and [kevinweber](https://github.com/kevinweber) for [aem-front](https://www.npmjs.com/package/aem-front).

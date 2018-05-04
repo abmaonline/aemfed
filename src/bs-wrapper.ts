@@ -88,7 +88,7 @@ export function create(args: IWrapperConfig): Promise<void> {
       return promise;
     })
     .catch(reason => {
-      console.log(`Init rejected: ${reason}`);
+      console.error(`Init rejected: ${reason}`);
     });
 }
 
@@ -189,10 +189,7 @@ export function reload(host: string, inputList: string[]): void {
   console.log("Determine dependencies: " + (Date.now() - sw) + " ms");
 
   if (css && !js && !html && !other) {
-    console.log(
-      instance.name + ": Only styling was changed, try to inject",
-      cssToRefresh
-    );
+    console.log(instance.name + ": Only styling was changed, try to inject");
     bs.reload(cssToRefresh);
   } else {
     bs.reload();
