@@ -7,6 +7,7 @@ Speed up your AEM front-end development using [aemsync](https://www.npmjs.com/pa
 * Watches changes in files and uploads them to AEM using [aemsync](https://www.npmjs.com/package/aemsync)
 * Determines which clientlibs are affected by the uploaded changes
 * Runs [BrowserSync](https://www.npmjs.com/package/browser-sync) in proxy modus so it can communicate with all open instances of your site without any browser plugins. It reloads these pages when the changes have been uploaded, or it only injects the new styling when only styling changes were made, maintaining the state of the page.
+* Show serverside clientlib errors for each request
 
 ## Installation
 
@@ -55,10 +56,13 @@ Once started, connect your browser to the local access URL and port provided by 
 ## Requirements
 
 * Works best with a recent version of node/npm, but tested with node 6.x
-* Tested on AEM 6.1 and 6.3
+* Tested on AEM 6.1, 6.3 SP1 and 6.3 SP2
 
 ## Isues
 
 * When sending a clientlib to BrowserSync that is not included in the page, all styling is reloaded. Issue in BrowserSync, will be fixed in future release: [#1505](https://github.com/BrowserSync/browser-sync/issues/1505)
+* Using ~ (homedir) in paths to watch does not work as expected when aemfed does all the path processing (paths are surrounded with quotes)
+* YUI minification generates errors for each request if there is an error (Less and GCC generate errors only first time after a resource was changed)
+* Less variables are not supported in imports
 
 Thanks to the [BrowserSync](https://www.npmjs.com/package/browser-sync) team, to [gavoja](https://github.com/gavoja) for [aemsync](https://www.npmjs.com/package/aemsync) and [kevinweber](https://github.com/kevinweber) for [aem-front](https://www.npmjs.com/package/aem-front).
