@@ -1,6 +1,5 @@
-import request from "request"; // needed for rpn
+import chalk from "chalk";
 import rpn from "request-promise-native";
-import timers from "timers";
 // const syncRequest = require('sync-request');
 
 // html source document
@@ -63,16 +62,24 @@ export class ClientlibTree {
     let swInner = Date.now();
     return rpn(this.server + this.path).then((html: string) => {
       console.log(
-        this.name + ": Get data from server: " + (Date.now() - swInner) + " ms"
+        chalk`[{blue ${this.name}}] Get data from server: ${(
+          Date.now() - swInner
+        ).toString()} ms`
       );
 
       swInner = Date.now();
       this.libs = this.processHtmlRegex(html);
       console.log(
-        this.name + ": Process data: " + (Date.now() - swInner) + " ms"
+        chalk`[{blue ${this.name}}] Process data: ${(
+          Date.now() - swInner
+        ).toString()} ms`
       );
 
-      console.log(this.name + ": Clientlib tree: " + (Date.now() - sw) + " ms");
+      console.log(
+        chalk`[{blue ${this.name}}] Clientlib tree: ${(
+          Date.now() - sw
+        ).toString()} ms`
+      );
       // console.log('clientlibs:', Object.keys(this.libs).length);
     });
 

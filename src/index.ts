@@ -4,10 +4,8 @@ import gfs from "graceful-fs";
 import minimist from "minimist";
 import opn from "opn";
 import path from "path";
-import url from "url";
-import * as bsWrapper from "./bs-wrapper";
-
 import packageInfo from "./../package.json";
+import * as bsWrapper from "./bs-wrapper";
 
 function separate() {
   console.log("---------------------------------------");
@@ -87,13 +85,6 @@ export function init(): void {
 
   // Config BrowserSync
   const targetList = targets.split(",");
-  if (targetList.length > 1) {
-    console.log(
-      chalk.cyan(
-        "Warning: multiple targets, so for now only the first one is proxied!"
-      )
-    );
-  }
 
   // use string because the regex object maintains state, so can't be reused safely
   const styleLinkPattern =

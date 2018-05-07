@@ -1,9 +1,10 @@
-import { Pipeline, Watcher } from "aemsync";
 import browserSync from "browser-sync";
+import chalk from "chalk";
 import gfs from "graceful-fs";
+import http from "http";
 import path from "path";
-import { ClientlibTree, IClientlibTreeConfig, ILib } from "./clientlib-tree";
-import { StyleTree } from "./style-tree";
+import rpn from "request-promise-native";
+import { ClientlibTree } from "./clientlib-tree";
 import { StyleTrees } from "./style-trees";
 
 export interface IWrapperConfig {
@@ -19,6 +20,20 @@ interface Instance {
   online: boolean;
   port: number;
   server: string;
+  aemSettings: IAemSettings;
+}
+
+interface IAemSettings {
+  // mode: string;
+  tracer?: ITracerSettings;
+}
+interface ITracerSettings {
+  enabled: boolean;
+  servletEnabled: boolean;
+  recordingCacheSizeInMB: number;
+  recordingCacheDurationInSecs: number;
+  recordingCompressionEnabled: boolean;
+  gzipResponse: boolean;
 }
 
 const instances: { [key: string]: Instance } = {};
@@ -26,6 +41,243 @@ const port = 3000; // TODO make configurable
 
 let styleTrees: StyleTrees;
 let config: IWrapperConfig;
+
+// Sling Tracer logic
+// TODO move to own file?
+interface ITracerProfile {
+  logger: string;
+  level: string;
+}
+interface ITracerConfig {
+  pattern: RegExp;
+  profiles: ITracerProfile[];
+}
+
+// Sling Tracer profiles
+// TODO do something about a lot of duplicate errors for YUI processor
+const yuiProfile: ITracerProfile = {
+  level: "error",
+  logger: "com.adobe.granite.ui.clientlibs.impl.YUIScriptProcessor"
+};
+const jscompProfile: ITracerProfile = {
+  level: "error",
+  logger: "com.google.javascript.jscomp"
+};
+const gccProfile: ITracerProfile = {
+  level: "error",
+  logger:
+    "com.adobe.granite.ui.clientlibs.processor.gcc.impl.GCCScriptProcessor"
+};
+const lessProfile: ITracerProfile = {
+  level: "error",
+  logger: "com.adobe.granite.ui.clientlibs.compiler.less.impl.LessCompilerImpl"
+};
+const htmlLibProfile: ITracerProfile = {
+  level: "error",
+  logger: "com.adobe.granite.ui.clientlibs.impl.HtmlLibraryManagerImpl"
+};
+const cacheLibProfile: ITracerProfile = {
+  level: "error",
+  logger: "com.adobe.granite.ui.clientlibs.impl.LibraryCacheImpl"
+};
+const acsProfile: ITracerProfile = {
+  level: "error",
+  logger:
+    "com.adobe.acs.commons.rewriter.impl.VersionedClientlibsTransformerFactory"
+};
+
+// Tracer configs
+const tracerConfigs: ITracerConfig[] = [
+  // Page, most logging is present in call to page itself (especially for gcc)
+  {
+    pattern: /\.html(\?.*|$)/,
+    profiles: [
+      yuiProfile,
+      jscompProfile,
+      gccProfile,
+      lessProfile,
+      htmlLibProfile,
+      cacheLibProfile,
+      acsProfile
+    ]
+  },
+  // Styling, for individual calls to css in case of injection
+  {
+    pattern: /\.css(\?.*|$)/,
+    profiles: [lessProfile, htmlLibProfile, cacheLibProfile]
+  },
+  // Javascript, in case of requesting individual js files
+  {
+    pattern: /\.js(\?.*|$)/,
+    profiles: [
+      yuiProfile,
+      jscompProfile,
+      gccProfile,
+      htmlLibProfile,
+      cacheLibProfile
+    ]
+  }
+];
+
+function setTracerHeaders(
+  proxyReq: http.ClientRequest,
+  req: http.IncomingMessage,
+  configs: ITracerConfig[]
+) {
+  const url = req.url;
+  configs.forEach(tracerConfig => {
+    if (url && tracerConfig.pattern.test(url)) {
+      const configStrings = tracerConfig.profiles.map(
+        ({ logger, level }) => `${logger};level=${level}`
+      );
+      proxyReq.setHeader("Sling-Tracer-Record", "true");
+      proxyReq.setHeader("Sling-Tracer-Config", configStrings.join(","));
+    }
+  });
+}
+
+function processTracer(
+  proxyRes: http.IncomingMessage,
+  url: string | undefined,
+  instance: Instance
+) {
+  const header = proxyRes.headers["Sling-Tracer-Request-Id".toLowerCase()];
+  const slingTracerRequestId = Array.isArray(header)
+    ? header.length
+      ? header[0]
+      : ""
+    : header;
+  if (slingTracerRequestId) {
+    // Use timeout, since json may not be ready yet
+    setTimeout(() => {
+      const tracerUrl =
+        instance.server +
+        "/system/console/tracer/" +
+        slingTracerRequestId +
+        ".json";
+
+      rpn({
+        json: true,
+        uri: tracerUrl
+      }).then((data: any) => {
+        if (data && !data.error) {
+          const trace: ITracer = data;
+          if (trace.logs.length) {
+            const report: string[] = generateReport(
+              instance,
+              url,
+              slingTracerRequestId,
+              trace
+            );
+            report.map(line => console.log(line));
+          }
+        }
+      });
+    }, 100);
+  }
+}
+
+function generateReport(
+  instance: Instance,
+  url: string | undefined,
+  slingTracerRequestId: string,
+  trace: ITracer
+) {
+  // tslint:disable:object-literal-sort-keys
+  const levelColorMap: {
+    [key: string]: (message: string) => string;
+  } = {
+    error: chalk.red,
+    warn: chalk.yellow,
+    info: chalk.white,
+    debug: chalk.reset,
+    trace: chalk.grey
+  };
+  // tslint:enable:object-literal-sort-keys
+
+  const report: string[] = [];
+
+  report.push(
+    chalk`[{blue ${instance.name}}] Tracer output for [{yellow ${url ||
+      "[url missing]"}}] (${slingTracerRequestId})`
+  );
+
+  trace.logs.map(({ logger, level, message }) => {
+    const className = logger.substr(logger.lastIndexOf(".") + 1);
+    const coloredLevel = levelColorMap[level.toLowerCase()](level);
+    report.push(chalk`[${coloredLevel}] {cyan ${className}}: ${message}`);
+  });
+
+  return report;
+}
+
+interface IOsgiConfig<T> {
+  pid: string;
+  title: string;
+  description: string;
+  properties: T;
+  bundleLocation?: string;
+  bundle_location?: string;
+  service_location?: string;
+}
+interface IOsgiProperty<T> {
+  name: string;
+  optional: boolean;
+  is_set: boolean;
+  type: number;
+  value: T | string; // If is_set is false, value is always a string it seems
+  description: string;
+}
+interface IOsgiPropertiesTracer {
+  // tracerSets: IOsgiProperty; // Multi value
+  enabled: IOsgiProperty<boolean>;
+  servletEnabled: IOsgiProperty<boolean>;
+  recordingCacheSizeInMB: IOsgiProperty<number>;
+  recordingCacheDurationInSecs: IOsgiProperty<number>;
+  recordingCompressionEnabled: IOsgiProperty<boolean>;
+  gzipResponse: IOsgiProperty<boolean>;
+}
+
+function setSlingTracerSettings(instance: Instance): Promise<Instance> {
+  const url =
+    instance.server +
+    "/system/console/configMgr/org.apache.sling.tracer.internal.LogTracer?post=true&ts=800";
+
+  return rpn({
+    json: true,
+    uri: url
+  }).then((data: any) => {
+    if (data && data.properties && Object.keys(data.properties).length > 0) {
+      const { properties }: IOsgiConfig<IOsgiPropertiesTracer> = data;
+      // Convert types any way, since default values are always send as strings it seems :sob:
+      instance.aemSettings.tracer = {
+        enabled: convert2Boolean(properties.enabled.value),
+        gzipResponse: convert2Boolean(properties.gzipResponse.value),
+        recordingCacheDurationInSecs: convert2Int(
+          properties.recordingCacheDurationInSecs.value
+        ),
+        recordingCacheSizeInMB: convert2Int(
+          properties.recordingCacheSizeInMB.value
+        ),
+        recordingCompressionEnabled: convert2Boolean(
+          properties.recordingCompressionEnabled.value
+        ),
+        servletEnabled: convert2Boolean(properties.servletEnabled.value)
+      };
+    } else {
+      // Something went wrong, so don't store these settings, but continue for next settings
+    }
+    return instance;
+  });
+}
+
+function convert2Boolean(value: boolean | string): boolean {
+  return typeof value === "string" ? value === "true" : value;
+}
+
+function convert2Int(value: number | string): number {
+  return typeof value === "string" ? parseInt(value, 10) : value;
+}
 
 export function create(args: IWrapperConfig): Promise<void> {
   // Documentation: https://www.browsersync.io/docs/options
@@ -46,6 +298,7 @@ export function create(args: IWrapperConfig): Promise<void> {
     const name = host;
     // TODO check if server is online? Or poll in between and
     const instance: Instance = {
+      aemSettings: {},
       clientlibTree: new ClientlibTree({ name, server }),
       name,
       online: true,
@@ -55,41 +308,99 @@ export function create(args: IWrapperConfig): Promise<void> {
     instances[host] = instance;
   });
 
-  // Setup clientlib stuff
-  const sw = Date.now();
-
-  const promises: Array<Promise<any>> = [];
-  // TODO handle unresponsive server(s)
   const hosts = Object.keys(instances);
+
+  // Create promises to add instance state
+  // TODO handle unresponsive server(s)
+  const swInstanceState = Date.now();
+  const promisesState: Array<Promise<any>> = [];
   hosts.forEach(host => {
     const instance = instances[host];
-    promises.push(instance.clientlibTree.init());
+    promisesState.push(
+      setSlingTracerSettings(instance)
+        .then(sameInstance => {
+          const tracerEnabled =
+            instance.aemSettings.tracer &&
+            instance.aemSettings.tracer.enabled &&
+            instance.aemSettings.tracer.servletEnabled;
+          if (!tracerEnabled) {
+            console.log(
+              chalk`[{blue ${
+                instance.name
+              }}] {cyan Apache Sling Log Tracer is not enabled, so errors from compiling and minifying Less and Javascript by AEM cannot be shown. To enable it, go to [{yellow /system/console/configMgr}], search for 'Apache Sling Log Tracer' and turn on both 'Enabled' and 'Recording Servlet Enabled}'.`
+            );
+          }
+        })
+        .catch(err => {
+          console.error(
+            chalk`[{blue ${instance.name}}] Something went wrong:`,
+            err
+          );
+        })
+    );
   });
 
-  styleTrees = new StyleTrees(config.jcrContentRoots);
-  promises.push(styleTrees.init());
-  return Promise.all(promises)
-    .then(() => {
-      //   console.log(`Init clientlibs finished`);
-      console.log(
-        "Build style and clientlib trees: " + (Date.now() - sw) + " ms"
-      );
-      console.log("---------------------------------------");
+  return Promise.all(promisesState).then(() => {
+    // Done with state
+    console.log(
+      "Get state for all instances: " + (Date.now() - swInstanceState) + " ms"
+    );
+    console.log("");
 
-      // Chain creation promises
-      let promise = Promise.resolve();
-      hosts.forEach(host => {
-        const instance = instances[host];
-        // Create bs instance and add to promise chain to make it serial
-        promise = promise.then(() => {
-          createBsInstancePromise(instance, bsOptions);
-        });
-      });
-      return promise;
-    })
-    .catch(reason => {
-      console.error(`Init rejected: ${reason}`);
+    // Setup clientlib stuff
+    const swClientlibs = Date.now();
+
+    const promisesClientlibs: Array<Promise<any>> = [];
+    hosts.forEach(host => {
+      const instance = instances[host];
+      promisesClientlibs.push(instance.clientlibTree.init());
     });
+
+    styleTrees = new StyleTrees(config.jcrContentRoots);
+    promisesClientlibs.push(styleTrees.init());
+    return Promise.all(promisesClientlibs)
+      .then(() => {
+        //   console.log(`Init clientlibs finished`);
+        console.log(
+          "Build style and clientlib trees: " +
+            (Date.now() - swClientlibs) +
+            " ms"
+        );
+        console.log("---------------------------------------");
+
+        // Chain creation promises
+        let promise = Promise.resolve();
+        hosts.forEach(host => {
+          const instance = instances[host];
+          // Create bs instance and add to promise chain to make it serial
+          promise = promise.then(() => {
+            createBsInstancePromise(instance, bsOptions);
+          });
+        });
+        return promise;
+      })
+      .catch(reason => {
+        console.error(`Init rejected: ${reason}`);
+      });
+  });
+}
+
+interface ITracer {
+  method: string;
+  time: number;
+  timestamp: number;
+  requestProgressLogs: string[];
+  queries: string[];
+  logs: ILog[];
+  loggerNames: string[];
+}
+
+interface ILog {
+  timestamp: number;
+  level: string;
+  logger: string;
+  message: string;
+  params: string[];
 }
 
 function createBsInstancePromise(
@@ -100,7 +411,19 @@ function createBsInstancePromise(
     const bs = browserSync.create(instance.name);
     // Set server specific settings
     // TODO clone options first?
-    bsOptions.proxy = { target: instance.server };
+    bsOptions.proxy = {
+      proxyReq: [
+        (proxyReq, req, res, proxyOptions) => {
+          setTracerHeaders(proxyReq, req, tracerConfigs);
+        }
+      ],
+      proxyRes: [
+        (proxyRes, req, res) => {
+          processTracer(proxyRes, req.url, instance);
+        }
+      ],
+      target: instance.server
+    };
     bsOptions.port = instance.port;
     bsOptions.ui = {
       port: instance.port + 1
@@ -189,7 +512,9 @@ export function reload(host: string, inputList: string[]): void {
   console.log("Determine dependencies: " + (Date.now() - sw) + " ms");
 
   if (css && !js && !html && !other) {
-    console.log(instance.name + ": Only styling was changed, try to inject");
+    console.log(
+      chalk`[{blue ${instance.name}}] Only styling was changed, try to inject`
+    );
     bs.reload(cssToRefresh);
   } else {
     bs.reload();
@@ -199,9 +524,11 @@ export function reload(host: string, inputList: string[]): void {
     // TODO wait with next push/update until this is done
     if (specialPaths.length > 0) {
       console.log(
-        instance.name +
-          ": Special paths were changed, so rebuild clientlib tree"
+        chalk`[{blue ${
+          instance.name
+        }}] Special paths were changed, so rebuild clientlib tree`
       );
+
       // Something changed in the structure, so rebuild all clientlib stuff
       // TODO make function for this
 
@@ -227,7 +554,11 @@ export function reload(host: string, inputList: string[]): void {
           );
         })
         .catch(reason => {
-          console.log(instance.name + `: Rebuild rejected: ${reason}`);
+          console.log(
+            chalk`[{blue ${
+              instance.name
+            }}] [{red ERROR}] Rebuild rejected: ${reason}`
+          );
         });
     }
   }

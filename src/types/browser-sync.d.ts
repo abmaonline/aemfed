@@ -11,7 +11,6 @@
 import * as chokidar from "chokidar";
 import * as fs from "fs";
 import * as http from "http";
-import * as mm from "micromatch";
 
 declare namespace browserSync {
   interface Options {
@@ -300,18 +299,28 @@ declare namespace browserSync {
     reqHeaders?: (config: any) => Hash<any>;
     proxyRes?:
       | ((
-          res: http.ServerResponse,
+          resProxy: http.IncomingMessage,
           req: http.IncomingMessage,
-          next: Function
+          res: http.ServerResponse
         ) => any)[]
       | ((
-          res: http.ServerResponse,
+          resProxy: http.IncomingMessage,
           req: http.IncomingMessage,
-          next: Function
+          res: http.ServerResponse
         ) => any);
     proxyReq?:
-      | ((res: http.ServerRequest) => any)[]
-      | ((res: http.ServerRequest) => any);
+      | ((
+          proxyReq: http.ClientRequest,
+          req: http.IncomingMessage,
+          res: http.ServerResponse,
+          proxyOptions: Object
+        ) => any)[]
+      | ((
+          proxyReq: http.ClientRequest,
+          req: http.IncomingMessage,
+          res: http.ServerResponse,
+          proxyOptions: Object
+        ) => any);
   }
 
   interface MiddlewareHandler {
