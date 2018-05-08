@@ -1,5 +1,9 @@
 # aemfed changelog
 
+## 0.0.3
+
+* Fix exception when specific files or a directory were removed
+
 ## 0.0.2
 
 ### Proxy multiple targets

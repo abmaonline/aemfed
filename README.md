@@ -58,7 +58,7 @@ Once started, connect your browser to the local access URL and port provided by 
 * Works best with a recent version of node/npm, but tested with node 6.x
 * Tested on AEM 6.1, 6.3 SP1 and 6.3 SP2
 
-## Isues
+## Issues
 
 * When sending a clientlib to BrowserSync that is not included in the page, all styling is reloaded. Issue in BrowserSync, will be fixed in future release: [#1505](https://github.com/BrowserSync/browser-sync/issues/1505)
 * Using ~ (homedir) in paths to watch does not work as expected when aemfed does all the path processing (paths are surrounded with quotes)

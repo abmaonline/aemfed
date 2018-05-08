@@ -471,8 +471,19 @@ export function reload(host: string, inputList: string[]): void {
         csstxtPaths.push(absolutePath);
       } else {
         // In packager special files are turned into dirs (.content.xml for example)
-        const stat = gfs.statSync(absolutePath);
-        if (stat.isDirectory()) {
+        let stat;
+        try {
+          stat = gfs.statSync(absolutePath);
+        } catch (err) {
+          if (err.code === "ENOENT") {
+            // File not found anymore, thread as special so libs are rebuild
+          } else {
+            // Report on other errors
+            console.error("Error:", absolutePath, err);
+          }
+        }
+
+        if (!stat || stat.isDirectory()) {
           specialPaths.push(absolutePath);
         } else {
           other = true;
