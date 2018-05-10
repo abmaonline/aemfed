@@ -25,7 +25,7 @@ Show the available options
 npx aemfed -h
 ```
 
-When `npx` is not avialable, install it with
+When `npx` is not available, install it with
 
 ```sh
 npm install -g npx
@@ -56,13 +56,16 @@ Once started, connect your browser to the local access URL and port provided by 
 ## Requirements
 
 * Works best with a recent version of node/npm, but tested with node 6.x
-* Tested on AEM 6.1, 6.3 SP1 and 6.3 SP2
+* Tested on AEM 6.1, 6.3 and 6.4
 
 ## Issues
 
-* When sending a clientlib to BrowserSync that is not included in the page, all styling is reloaded. Issue in BrowserSync, will be fixed in future release: [#1505](https://github.com/BrowserSync/browser-sync/issues/1505)
 * Using ~ (homedir) in paths to watch does not work as expected when aemfed does all the path processing (paths are surrounded with quotes)
 * YUI minification generates errors for each request if there is an error (Less and GCC generate errors only first time after a resource was changed)
-* Less variables are not supported in imports
+* When installing the [WKND tutorial](https://github.com/Adobe-Marketing-Cloud/aem-guides-wknd) in a clean AEM 6.3 SP2 or AEM 6.4, it is possible the changes pushed to AEM are not present in the final clientlibs loaded into the pages. Performing a one time clientlib rebuild could fix this: http://localhost:4502/libs/granite/ui/content/dumplibs.rebuild.html and click 'Invalidate Caches' & 'Rebuild Libraries' (last step can take up to 15 minutes)
+* When inspecting Less imports to determine dependencies, very simple logic is used to process the file locations in the `@import`. Resulting in a number of edge cases not working as expected (and throw `ENOENT` exceptions):
+  * Less variables are not supported in `@import` (used for example in the [WKND tutorial](https://github.com/Adobe-Marketing-Cloud/aem-guides-wknd) in `ui.apps/src/main/content/jcr_root/apps/wknd/clientlibs/clientlib-site/site/css/grid.less` to switch between the 6.3 and 6.4 `grid-base`). As a result changes in the imported file may not trigger an update in the browser
+  * Importing css files in a Less file using `@import` doesn't work, since it appends `.less` to all `@imports`. But since the css probably doesn't need any Less processing anyway, it is better to include it directly in a css.txt (in older versions of AEM it also speeds up the Less processing)
+* The issue, where BrowserSync was reloading all css when it could not find one of the patterns, is fixed with this version. Another issue is introduced however. When visiting the web console (`/system/console`) in Firefox, the links from the top menu stop working correctly. After one or two clicks it keeps redirecting you to the bundles page. This behaviour has not been seen in Chrome or Safari.
 
 Thanks to the [BrowserSync](https://www.npmjs.com/package/browser-sync) team, to [gavoja](https://github.com/gavoja) for [aemsync](https://www.npmjs.com/package/aemsync) and [kevinweber](https://github.com/kevinweber) for [aem-front](https://www.npmjs.com/package/aem-front).

@@ -239,9 +239,10 @@ interface IOsgiPropertiesTracer {
 }
 
 function setSlingTracerSettings(instance: Instance): Promise<Instance> {
+  const buster = `${Date.now()}`.slice(-3);
   const url =
     instance.server +
-    "/system/console/configMgr/org.apache.sling.tracer.internal.LogTracer?post=true&ts=800";
+    `/system/console/configMgr/org.apache.sling.tracer.internal.LogTracer?post=true&ts=${buster}`;
 
   return rpn({
     json: true,

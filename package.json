@@ -16,7 +16,7 @@
   ],
   "dependencies": {
     "aemsync": "abmaonline/aemsync#338c091",
-    "browser-sync": "^2.23.7",
+    "browser-sync": "^2.24.4",
     "chalk": "^2.4.1",
     "graceful-fs": "^4.1.9",
     "less-tree": "abmaonline/less-tree#6168498",
