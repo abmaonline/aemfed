@@ -18,6 +18,7 @@
     "aemsync": "abmaonline/aemsync#338c091",
     "browser-sync": "^2.24.4",
     "chalk": "^2.4.1",
+    "decode-html": "^2.0.0",
     "graceful-fs": "^4.1.9",
     "less-tree": "abmaonline/less-tree#6168498",
     "minimist": "^1.2.0",

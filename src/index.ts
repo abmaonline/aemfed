@@ -1,5 +1,6 @@
 import { Pipeline, Watcher } from "aemsync";
 import chalk from "chalk";
+import decode from "decode-html";
 import gfs from "graceful-fs";
 import minimist from "minimist";
 import opn from "opn";
@@ -15,6 +16,7 @@ function separate() {
 const MSG_HELP = `Usage: aemfed [OPTIONS]
 Options:
   -t targets           Default is http://admin:admin@localhost:4502
+  -p proxy_port        Default is 3000
   -w path_to_watch     Default is current
   -e exclude_filter    Anymatch exclude filter; disabled by default
   -i sync_interval     Update interval in milliseconds; default is 100
@@ -32,7 +34,9 @@ function reloadBrowser(
   if (!error) {
     bsWrapper.reload(host, inputList);
   } else {
-    console.error(host + ": Error when pushing pack: ", error);
+    console.error(
+      chalk`[{blue ${host}}] [{red Error}] when pushing pack: ${decode(error)}`
+    );
   }
 }
 
@@ -71,7 +75,8 @@ export function init(): void {
 
   // TODO make some sort of defaults file and get defaults from there (and use in all modules)
   const targets: string = args.t || "http://admin:admin@localhost:4502";
-  const pushInterval: number = args.i || 100;
+  const proxyPort: number = parseInt(args.p, 10) || 3000;
+  const pushInterval: number = parseInt(args.i, 10) || 100;
   const exclude: string = args.e || "";
   const startPage: string = args.o || "false";
   const startBrowser: string = args.browser || "google chrome";
@@ -79,6 +84,7 @@ export function init(): void {
   separate();
   console.log("Working dirs:", workingDirs);
   console.log("Targets:", targets);
+  console.log("Proxy port:", proxyPort);
   console.log("Interval:", pushInterval);
   console.log("Exclude:", exclude);
   separate();
@@ -116,6 +122,7 @@ export function init(): void {
       ]
     },
     jcrContentRoots: workingDirs,
+    proxyPort,
     servers: targetList
   });
 

@@ -1,5 +1,10 @@
 # aemfed changelog
 
+## 0.0.4
+
+* Update BrowserSync to fix issue with reloading all css [#1505](https://github.com/BrowserSync/browser-sync/issues/1505). It introduces a problem with Firefix and the web console however.
+* Add option to specify start port for BrowserSync proxy, so it is easier to run multiple versions at the same time
+
 ## 0.0.3
 
 * Fix exception when specific files or a directory were removed

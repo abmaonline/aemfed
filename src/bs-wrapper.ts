@@ -10,6 +10,7 @@ import { StyleTrees } from "./style-trees";
 export interface IWrapperConfig {
   bsOptions: browserSync.Options;
   jcrContentRoots: string[];
+  proxyPort: number;
   servers: string[];
   dumpLibsPath?: string;
 }
@@ -37,7 +38,6 @@ interface ITracerSettings {
 }
 
 const instances: { [key: string]: Instance } = {};
-const port = 3000; // TODO make configurable
 
 let styleTrees: StyleTrees;
 let config: IWrapperConfig;
@@ -303,7 +303,7 @@ export function create(args: IWrapperConfig): Promise<void> {
       clientlibTree: new ClientlibTree({ name, server }),
       name,
       online: true,
-      port: port + index * 2, // Claim numbers for proxy and ui
+      port: args.proxyPort + index * 2, // Claim numbers for proxy and ui
       server
     };
     instances[host] = instance;
@@ -320,21 +320,30 @@ export function create(args: IWrapperConfig): Promise<void> {
     promisesState.push(
       setSlingTracerSettings(instance)
         .then(sameInstance => {
-          const tracerEnabled =
-            instance.aemSettings.tracer &&
-            instance.aemSettings.tracer.enabled &&
-            instance.aemSettings.tracer.servletEnabled;
-          if (!tracerEnabled) {
+          if (instance.aemSettings.tracer) {
+            const tracerEnabled =
+              instance.aemSettings.tracer.enabled &&
+              instance.aemSettings.tracer.servletEnabled;
+            if (!tracerEnabled) {
+              console.log(
+                chalk`[{blue ${
+                  instance.name
+                }}] {cyan Apache Sling Log Tracer is not enabled, so errors from compiling and minifying Less and Javascript by AEM cannot be shown. To enable it, go to [{yellow /system/console/configMgr}], search for 'Apache Sling Log Tracer' and turn on both 'Enabled' and 'Recording Servlet Enabled}'.`
+              );
+            }
+          } else {
             console.log(
               chalk`[{blue ${
                 instance.name
-              }}] {cyan Apache Sling Log Tracer is not enabled, so errors from compiling and minifying Less and Javascript by AEM cannot be shown. To enable it, go to [{yellow /system/console/configMgr}], search for 'Apache Sling Log Tracer' and turn on both 'Enabled' and 'Recording Servlet Enabled}'.`
+              }}] {cyan Apache Sling Log Tracer config was not found, so probably not supported in this version of AEM}.`
             );
           }
         })
         .catch(err => {
           console.error(
-            chalk`[{blue ${instance.name}}] Something went wrong:`,
+            chalk`[{blue ${
+              instance.name
+            }}] [{red ERROR}] Something went wrong:`,
             err
           );
         })
