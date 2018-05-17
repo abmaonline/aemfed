@@ -1,6 +1,6 @@
 {
   "name": "aemfed",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Upload front-end changes into AEM and refresh relevant resources in the page for easier development.",
   "author": {
     "name": "Matthijs Abma"
