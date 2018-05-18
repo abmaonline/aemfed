@@ -5,6 +5,7 @@ import http from "http";
 import path from "path";
 import rpn from "request-promise-native";
 import { ClientlibTree } from "./clientlib-tree";
+import * as messages from "./messages";
 import { StyleTrees } from "./style-trees";
 
 export interface IWrapperConfig {
@@ -46,7 +47,11 @@ let config: IWrapperConfig;
 // TODO move to own file?
 interface ITracerProfile {
   logger: string;
-  level: string;
+  level?: string;
+  caller?: boolean | number;
+  callerExcludeFilter?: string[];
+  postProcess?(message: string): string;
+  getJcrRef?(message: string): messages.ISourceFileReference | undefined;
 }
 interface ITracerConfig {
   pattern: RegExp;
@@ -55,9 +60,14 @@ interface ITracerConfig {
 
 // Sling Tracer profiles
 // TODO do something about a lot of duplicate errors for YUI processor
+// tslint:disable:object-literal-sort-keys
 const yuiProfile: ITracerProfile = {
   level: "error",
-  logger: "com.adobe.granite.ui.clientlibs.impl.YUIScriptProcessor"
+  logger: "com.adobe.granite.ui.clientlibs.impl.YUIScriptProcessor",
+  postProcess: message => {
+    // YUI adds a new line and it's own ERROR prefix for each line: strip it
+    return message.replace(/^\n\[ERROR\] /, "");
+  }
 };
 const jscompProfile: ITracerProfile = {
   level: "error",
@@ -70,7 +80,16 @@ const gccProfile: ITracerProfile = {
 };
 const lessProfile: ITracerProfile = {
   level: "error",
-  logger: "com.adobe.granite.ui.clientlibs.compiler.less.impl.LessCompilerImpl"
+  logger: "com.adobe.granite.ui.clientlibs.compiler.less.impl.LessCompilerImpl",
+  getJcrRef: (message: string) => {
+    // illegal jcr chars (but added '/' since we want complete path):
+    // https://helpx.adobe.com/experience-manager/6-3/sites/developing/using/reference-materials/javadoc/com/day/cq/commons/jcr/JcrUtil.html
+    return messages.getRef(
+      message,
+      /([^:[\]*'"|\s]+) on line (\d+), column (\d+)/,
+      config.jcrContentRoots
+    );
+  }
 };
 const htmlLibProfile: ITracerProfile = {
   level: "error",
@@ -85,6 +104,22 @@ const acsProfile: ITracerProfile = {
   logger:
     "com.adobe.acs.commons.rewriter.impl.VersionedClientlibsTransformerFactory"
 };
+const slingProcessorProfile: ITracerProfile = {
+  level: "error",
+  logger: "org.apache.sling.engine.impl.SlingRequestProcessorImpl"
+};
+// tslint:enable:object-literal-sort-keys
+// Used for querying
+const profiles = [
+  yuiProfile,
+  jscompProfile,
+  gccProfile,
+  lessProfile,
+  htmlLibProfile,
+  cacheLibProfile,
+  acsProfile,
+  slingProcessorProfile
+];
 
 // Tracer configs
 const tracerConfigs: ITracerConfig[] = [
@@ -98,7 +133,8 @@ const tracerConfigs: ITracerConfig[] = [
       lessProfile,
       htmlLibProfile,
       cacheLibProfile,
-      acsProfile
+      acsProfile,
+      slingProcessorProfile
     ]
   },
   // Styling, for individual calls to css in case of injection
@@ -128,7 +164,21 @@ function setTracerHeaders(
   configs.forEach(tracerConfig => {
     if (url && tracerConfig.pattern.test(url)) {
       const configStrings = tracerConfig.profiles.map(
-        ({ logger, level }) => `${logger};level=${level}`
+        ({ logger, level, caller, callerExcludeFilter }) => {
+          const fragments = [logger];
+          if (level) {
+            fragments.push(`level=${level}`);
+          }
+          if (caller === true || typeof caller === "number") {
+            fragments.push(`caller=${caller}`);
+          }
+          if (callerExcludeFilter && callerExcludeFilter.length) {
+            fragments.push(
+              `caller-exclude-filter="${callerExcludeFilter.join("|")}"`
+            );
+          }
+          return fragments.join(";");
+        }
       );
       proxyReq.setHeader("Sling-Tracer-Record", "true");
       proxyReq.setHeader("Sling-Tracer-Config", configStrings.join(","));
@@ -196,19 +246,69 @@ function generateReport(
   // tslint:enable:object-literal-sort-keys
 
   const report: string[] = [];
+  const sourceFileRefs: messages.ISourceFileReference[] = [];
 
   report.push(
     chalk`[{blue ${instance.name}}] Tracer output for [{yellow ${url ||
       "[url missing]"}}] (${slingTracerRequestId})`
   );
 
+  // Process direct logs
   trace.logs.map(({ logger, level, message }) => {
     const className = logger.substr(logger.lastIndexOf(".") + 1);
     const coloredLevel = levelColorMap[level.toLowerCase()](level);
+
+    // Check profile specific processing of message
+    const currentProfile = profiles.find(p => logger === p.logger);
+    if (currentProfile) {
+      // Try to translate JCR references back to local files
+      if (typeof currentProfile.getJcrRef === "function") {
+        const sourceFileRef = currentProfile.getJcrRef(message);
+        if (sourceFileRef) {
+          // Add to list
+          sourceFileRefs.push(sourceFileRef);
+        }
+      }
+      // If function available, clean up log message
+      if (typeof currentProfile.postProcess === "function") {
+        message = currentProfile.postProcess(message);
+      }
+    }
     report.push(chalk`[${coloredLevel}] {cyan ${className}}: ${message}`);
   });
 
-  return report;
+  // Process errors in request progress log (descriptive sightly errors are only in here)
+  const requestProgressErrorLogs = trace.requestProgressLogs
+    .map(message => {
+      const match = /\d+ LOG SCRIPT ERROR: (.*)/.exec(message);
+      if (match) {
+        // Test if not a ScriptEvaluationException with empty message
+        // (thrown several times in the upstream stack trace)
+        if (!/ScriptEvaluationException:$/.test(match[1])) {
+          // Try to find jcr paths
+          const ref = messages.getRef(
+            message,
+            /([^:[\]*'"|\s]+) at line number (\d+) at column number (\d+)/,
+            config.jcrContentRoots
+          );
+          if (ref) {
+            sourceFileRefs.push(ref);
+          }
+
+          // Write out message
+          return chalk`[{red ERROR}] {cyan Sling Request Progress Tracker}: ${
+            match[1]
+          }`;
+        }
+      }
+    })
+    .filter(message => typeof message === "string") as string[];
+
+  const localPaths = sourceFileRefs
+    .map(ref => messages.formatMessage(ref))
+    .filter(filePath => typeof filePath === "string") as string[];
+
+  return report.concat(requestProgressErrorLogs, localPaths);
 }
 
 interface IOsgiConfig<T> {
@@ -400,7 +500,7 @@ interface ITracer {
   time: number;
   timestamp: number;
   requestProgressLogs: string[];
-  queries: string[];
+  queries: IQuery[];
   logs: ILog[];
   loggerNames: string[];
 }
@@ -411,6 +511,12 @@ interface ILog {
   logger: string;
   message: string;
   params: string[];
+}
+
+interface IQuery {
+  query: string;
+  plan: string;
+  caller: string;
 }
 
 function createBsInstancePromise(

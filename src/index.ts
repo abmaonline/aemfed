@@ -7,6 +7,7 @@ import opn from "opn";
 import path from "path";
 import packageInfo from "./../package.json";
 import * as bsWrapper from "./bs-wrapper";
+import * as messages from "./messages";
 
 function separate() {
   console.log("---------------------------------------");
@@ -25,6 +26,8 @@ Options:
   -h                   Displays this screen
   -v                   Displays version of this package`;
 
+const workingDirs: string[] = [];
+
 function reloadBrowser(
   error: string,
   host: string,
@@ -37,6 +40,17 @@ function reloadBrowser(
     console.error(
       chalk`[{blue ${host}}] [{red Error}] when pushing pack: ${decode(error)}`
     );
+
+    // Only use section after jcr_root, since path itself doesn't exist
+    const ref = messages.getRef(
+      error,
+      /systemId: file:\/\/.*?\/jcr_root(\/.*?); lineNumber: (\d+); columnNumber: (\d+);/,
+      workingDirs
+    );
+    const logLine = messages.formatMessage(ref);
+    if (logLine) {
+      console.log(logLine);
+    }
   }
 }
 
@@ -57,7 +71,8 @@ export function init(): void {
     return;
   }
 
-  const workingDirs: string[] = [];
+  // Reset workingDirs in case we restart?
+  workingDirs.splice(0, workingDirs.length);
   const dirs = args.w ? args.w : ".";
   dirs.split(",").forEach((dir: string) => {
     const absDir = path.resolve(dir);
