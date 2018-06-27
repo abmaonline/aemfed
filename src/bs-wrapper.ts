@@ -51,11 +51,45 @@ interface ITracerProfile {
   caller?: boolean | number;
   callerExcludeFilter?: string[];
   postProcess?(message: string): string;
-  getJcrRef?(message: string): messages.ISourceFileReference | undefined;
+  getJcrRef?(
+    message: string,
+    instance: Instance
+  ): messages.ISourceFileReference | undefined;
+  fixJcrRef?(
+    sourceRef: messages.ISourceFileReference,
+    instance: Instance
+  ): Promise<messages.ISourceFileReference>;
 }
 interface ITracerConfig {
   pattern: RegExp;
   profiles: ITracerProfile[];
+}
+
+/**
+ * Try to update the ref with the individual file info based on uber line nr from combined client lib
+ * @param ref Source file reference from the error message with line nr based on combined javascript files
+ * @param instance Server instance with the javascript client lib tree we use to find individual file
+ * @returns Promise with the ref itself with updated info, but since it is an object, it is the same reference as the provided parameter
+ */
+function fixJsPath(
+  ref: messages.ISourceFileReference,
+  instance: Instance
+): Promise<messages.ISourceFileReference> {
+  if (ref.jcrPath && typeof ref.line === "number") {
+    return instance.clientlibTree.jsTrees
+      .getMappedFile(ref.jcrPath, ref.line)
+      .then(jsFileMapped => {
+        // Something was mapped, so update ref with data
+        if (jsFileMapped) {
+          ref.jcrPath = jsFileMapped.path;
+          ref.line = jsFileMapped.line; // Compensate for extra lines from files before this
+          messages.setFilePath(ref, config.jcrContentRoots);
+        }
+        return ref;
+      });
+  } else {
+    return Promise.resolve(ref);
+  }
 }
 
 // Sling Tracer profiles
@@ -64,6 +98,26 @@ interface ITracerConfig {
 const yuiProfile: ITracerProfile = {
   level: "error",
   logger: "com.adobe.granite.ui.clientlibs.impl.YUIScriptProcessor",
+  getJcrRef: message => {
+    // Only check for lines and columns, since no other info in message
+    const sourceRef = messages.getRef(
+      message,
+      /(\d+):(\d+):/,
+      config.jcrContentRoots,
+      {
+        line: 1,
+        column: 2,
+        jcrPath: -1,
+        filePath: -1
+      }
+    );
+    return sourceRef;
+  },
+  fixJcrRef: (sourceRef, instance) => {
+    // Try to get the individual js file name, based on uber line nr
+    // Make sure all data is loaded into JsTrees
+    return fixJsPath(sourceRef, instance);
+  },
   postProcess: message => {
     // YUI adds a new line and it's own ERROR prefix for each line: strip it
     return message.replace(/^\n\[ERROR\] /, "");
@@ -71,7 +125,34 @@ const yuiProfile: ITracerProfile = {
 };
 const jscompProfile: ITracerProfile = {
   level: "error",
-  logger: "com.google.javascript.jscomp"
+  logger: "com.google.javascript.jscomp",
+  getJcrRef: (message, instance) => {
+    const sourceRef = messages.getRef(
+      message,
+      /^([^:[\]*'"|\s]+):(\d+):/,
+      config.jcrContentRoots,
+      {
+        jcrPath: 1,
+        line: 2,
+        column: -1,
+        filePath: -1
+      }
+    );
+    if (sourceRef) {
+      // Try to get column from line with ^ indicator
+      // Only works when indented with spaces, since we don't know the tab width
+      const match = /^( *\^)$/gm.exec(message);
+      if (match) {
+        sourceRef.column = match[1].length;
+      }
+    }
+    return sourceRef;
+  },
+  fixJcrRef: (sourceRef, instance) => {
+    // Try to get the individual js file name, based on uber line nr
+    // Make sure all data is loaded into JsTrees
+    return fixJsPath(sourceRef, instance);
+  }
 };
 const gccProfile: ITracerProfile = {
   level: "error",
@@ -81,19 +162,35 @@ const gccProfile: ITracerProfile = {
 const lessProfile: ITracerProfile = {
   level: "error",
   logger: "com.adobe.granite.ui.clientlibs.compiler.less.impl.LessCompilerImpl",
-  getJcrRef: (message: string) => {
+  getJcrRef: message => {
     // illegal jcr chars (but added '/' since we want complete path):
     // https://helpx.adobe.com/experience-manager/6-3/sites/developing/using/reference-materials/javadoc/com/day/cq/commons/jcr/JcrUtil.html
-    return messages.getRef(
+    const sourceRef = messages.getRef(
       message,
       /([^:[\]*'"|\s]+) on line (\d+), column (\d+)/,
       config.jcrContentRoots
     );
+    return sourceRef;
   }
 };
 const htmlLibProfile: ITracerProfile = {
   level: "error",
-  logger: "com.adobe.granite.ui.clientlibs.impl.HtmlLibraryManagerImpl"
+  logger: "com.adobe.granite.ui.clientlibs.impl.HtmlLibraryManagerImpl",
+  getJcrRef: message => {
+    // Only check for js for now
+    const sourceRef = messages.getRef(
+      message,
+      /Error during assembly of (\/[^:[\]*'"|\s]+\.js)/,
+      config.jcrContentRoots,
+      {
+        jcrPath: 1,
+        filePath: -1,
+        line: -1,
+        column: -1
+      }
+    );
+    return sourceRef;
+  }
 };
 const cacheLibProfile: ITracerProfile = {
   level: "error",
@@ -213,13 +310,11 @@ function processTracer(
         if (data && !data.error) {
           const trace: ITracer = data;
           if (trace.logs.length) {
-            const report: string[] = generateReport(
-              instance,
-              url,
-              slingTracerRequestId,
-              trace
+            generateReport(instance, url, slingTracerRequestId, trace).then(
+              report => {
+                report.map(line => console.log(line));
+              }
             );
-            report.map(line => console.log(line));
           }
         }
       });
@@ -227,12 +322,24 @@ function processTracer(
   }
 }
 
+// Used for filtering duplicates in .filter
+function onlyUnique<T>(value: T, index: number, self: T[]): boolean {
+  return self.indexOf(value) === index;
+}
+
+interface IReportMessage {
+  traceLog?: ILog;
+  postMessage?: string;
+  profile?: ITracerProfile;
+  sourceRef?: messages.ISourceFileReference;
+}
+
 function generateReport(
   instance: Instance,
   url: string | undefined,
   slingTracerRequestId: string,
   trace: ITracer
-) {
+): Promise<string[]> {
   // tslint:disable:object-literal-sort-keys
   const levelColorMap: {
     [key: string]: (message: string) => string;
@@ -246,45 +353,137 @@ function generateReport(
   // tslint:enable:object-literal-sort-keys
 
   const report: string[] = [];
-  const sourceFileRefs: messages.ISourceFileReference[] = [];
 
   report.push(
     chalk`[{blue ${instance.name}}] Tracer output for [{yellow ${url ||
       "[url missing]"}}] (${slingTracerRequestId})`
   );
 
-  // Process direct logs
-  trace.logs.map(({ logger, level, message }) => {
-    const className = logger.substr(logger.lastIndexOf(".") + 1);
-    const coloredLevel = levelColorMap[level.toLowerCase()](level);
+  const reportMessages: IReportMessage[] = [];
+  // Magic for JS
+  const onlyLines: IReportMessage[] = [];
+  const onlyPaths: IReportMessage[] = [];
+
+  trace.logs.map(traceLog => {
+    const className = traceLog.logger.substr(
+      traceLog.logger.lastIndexOf(".") + 1
+    );
+    const coloredLevel = levelColorMap[traceLog.level.toLowerCase()](
+      traceLog.level
+    );
+    const message: IReportMessage = { traceLog };
 
     // Check profile specific processing of message
-    const currentProfile = profiles.find(p => logger === p.logger);
-    if (currentProfile) {
+    const profile = profiles.find(p => traceLog.logger === p.logger);
+    if (profile) {
+      message.profile = profile;
       // Try to translate JCR references back to local files
-      if (typeof currentProfile.getJcrRef === "function") {
-        const sourceFileRef = currentProfile.getJcrRef(message);
-        if (sourceFileRef) {
+      if (typeof profile.getJcrRef === "function") {
+        message.sourceRef = profile.getJcrRef(traceLog.message, instance);
+        // reportMessage
+        if (message.sourceRef) {
+          const hasPath =
+            message.sourceRef.jcrPath ||
+            message.sourceRef.absoluteFilePath ||
+            message.sourceRef.relativeFilePath;
+          const hasLine = typeof message.sourceRef.line === "number";
           // Add to list
-          sourceFileRefs.push(sourceFileRef);
+          if (hasPath && hasLine) {
+            // Complete, so add direct to sourceFileRefs
+            reportMessages.push(message);
+          } else {
+            // Something is missing, try to fix
+            // Mainly for YUI
+            if (!hasPath && hasLine) {
+              // Only lines, so check if there are still onlyPaths present and clean up
+              if (onlyPaths.length) {
+                // First cleanup since last run
+                processOnlies();
+              }
+              onlyLines.push(message);
+            } else if (hasPath && !hasLine) {
+              onlyPaths.push(message);
+            }
+          }
         }
       }
       // If function available, clean up log message
-      if (typeof currentProfile.postProcess === "function") {
-        message = currentProfile.postProcess(message);
+      if (typeof profile.postProcess === "function") {
+        message.postMessage = profile.postProcess(traceLog.message);
       }
     }
-    report.push(chalk`[${coloredLevel}] {cyan ${className}}: ${message}`);
+    report.push(
+      chalk`[${coloredLevel}] {cyan ${className}}: ${message.postMessage ||
+        traceLog.message}`
+    );
   });
+
+  if (onlyPaths.length) {
+    processOnlies();
+  }
+
+  function processOnlies() {
+    // onlyPaths deduplicate: pick first (since probably
+    // related to onlyLines that came before it)
+    const uniquePathMessages: IReportMessage[] = [];
+    onlyPaths.forEach(message => {
+      const onlyPath = message.sourceRef;
+      if (
+        onlyPath &&
+        onlyPath.jcrPath &&
+        !uniquePathMessages.some(
+          up =>
+            typeof up.sourceRef !== "undefined" &&
+            up.sourceRef.jcrPath === onlyPath.jcrPath
+        )
+      ) {
+        uniquePathMessages.push(message);
+      }
+    });
+
+    if (uniquePathMessages.length) {
+      uniquePathMessages.forEach((uniquePath, upIndex) => {
+        const pathRef = uniquePath.sourceRef;
+        if (upIndex === 0 && onlyLines.length && pathRef) {
+          // For first uniquePath try to apply all onlyLines if any
+          onlyLines.forEach((message, index) => {
+            const lineRef = message.sourceRef;
+            if (lineRef) {
+              if (
+                onlyLines.length === index + 1 &&
+                lineRef &&
+                lineRef.line === 1 &&
+                lineRef.column === 0
+              ) {
+                // Last message has 1:0: which means summary and not relevant so skip
+              } else {
+                lineRef.jcrPath = pathRef.jcrPath;
+                // Store in final list
+                reportMessages.push(message);
+              }
+            }
+          });
+        } else {
+          // Just push all remaining paths
+          reportMessages.push(uniquePath);
+        }
+      });
+    }
+    // Done, empty onlyLines and onlyPaths before filling them again
+    onlyLines.splice(0, onlyLines.length);
+    onlyPaths.splice(0, onlyPaths.length);
+  }
 
   // Process errors in request progress log (descriptive sightly errors are only in here)
   const requestProgressErrorLogs = trace.requestProgressLogs
     .map(message => {
       const match = /\d+ LOG SCRIPT ERROR: (.*)/.exec(message);
       if (match) {
+        const postMessage = match[1];
         // Test if not a ScriptEvaluationException with empty message
         // (thrown several times in the upstream stack trace)
-        if (!/ScriptEvaluationException:$/.test(match[1])) {
+        // In AEM 6.4 it is thrown also with the original message...
+        if (!/ScriptEvaluationException:$/.test(postMessage)) {
           // Try to find jcr paths
           const ref = messages.getRef(
             message,
@@ -292,23 +491,38 @@ function generateReport(
             config.jcrContentRoots
           );
           if (ref) {
-            sourceFileRefs.push(ref);
+            reportMessages.push({
+              postMessage,
+              sourceRef: ref
+            });
           }
 
           // Write out message
-          return chalk`[{red ERROR}] {cyan Sling Request Progress Tracker}: ${
-            match[1]
-          }`;
+          return chalk`[{red ERROR}] {cyan Sling Request Progress Tracker}: ${postMessage}`;
         }
       }
     })
     .filter(message => typeof message === "string") as string[];
 
-  const localPaths = sourceFileRefs
-    .map(ref => messages.formatMessage(ref))
-    .filter(filePath => typeof filePath === "string") as string[];
+  // All sourceRefs are present, last fix round
+  const promises: Array<Promise<messages.ISourceFileReference>> = [];
+  for (const { sourceRef, profile } of reportMessages) {
+    if (profile && sourceRef) {
+      if (typeof profile.fixJcrRef === "function") {
+        promises.push(profile.fixJcrRef(sourceRef, instance));
+      }
+    }
+  }
 
-  return report.concat(requestProgressErrorLogs, localPaths);
+  return Promise.all(promises).then(fixedRefs => {
+    // We're not interested in fixedRefs, only that they have been fixed
+    const uniqueLocalPaths = reportMessages
+      .map(ref => ref.sourceRef && messages.formatMessage(ref.sourceRef))
+      .filter((filePath): filePath is string => typeof filePath === "string")
+      .filter(onlyUnique);
+
+    return report.concat(requestProgressErrorLogs, uniqueLocalPaths);
+  });
 }
 
 interface IOsgiConfig<T> {
@@ -572,6 +786,8 @@ export function reload(host: string, inputList: string[]): void {
   let other = false;
   const cssPaths: string[] = [];
   const csstxtPaths: string[] = [];
+  const jsPaths: string[] = [];
+  const jstxtPaths: string[] = [];
   const specialPaths: string[] = [];
 
   inputList.forEach(absolutePath => {
@@ -580,11 +796,13 @@ export function reload(host: string, inputList: string[]): void {
       if (/\.(css|less|scss)$/.test(absolutePath)) {
         cssPaths.push(absolutePath);
       } else if (/\.(js)$/.test(absolutePath)) {
-        js = true;
+        jsPaths.push(absolutePath);
       } else if (/\.(html|jsp)$/.test(absolutePath)) {
         html = true;
       } else if (/css\.txt$/.test(absolutePath)) {
         csstxtPaths.push(absolutePath);
+      } else if (/js\.txt$/.test(absolutePath)) {
+        jstxtPaths.push(absolutePath);
       } else {
         // In packager special files are turned into dirs (.content.xml for example)
         let stat;
@@ -611,6 +829,7 @@ export function reload(host: string, inputList: string[]): void {
   // Fix state
   // css.txt has only effect on one individual client lib, so handle as css/less
   css = css || cssPaths.length > 0 || csstxtPaths.length > 0;
+  js = js || jsPaths.length > 0; // Don't include jsTxtFiles here yet, since not needed
   other = other || specialPaths.length > 0;
 
   // Always update styling info, since we only
@@ -644,6 +863,30 @@ export function reload(host: string, inputList: string[]): void {
     );
     bs.reload(cssToRefresh);
   } else {
+    if (js) {
+      // Fix js before reloading, so links can be generated immediately
+      // First make paths relative to correct jcr_root
+      const relativeJsPaths: string[] = [];
+      jsPaths.forEach(filePath => {
+        config.jcrContentRoots.forEach(rootDir => {
+          if (filePath.indexOf(rootDir) === 0) {
+            // Found correct root
+            const relativeJcrPath = filePath.replace(rootDir, "");
+            relativeJsPaths.push(relativeJcrPath);
+          }
+        });
+      });
+
+      // Remove relative paths from jstree cache (will be updated when needed)
+      instance.clientlibTree.jsTrees.resetFiles(relativeJsPaths);
+    }
+
+    if (specialPaths.length > 0 || jstxtPaths.length > 0) {
+      // If special paths were changed, reset the list of libs (but leave files alone)
+      instance.clientlibTree.jsTrees.resetLibs();
+    }
+
+    // When js files have been invalidated, trigger reload
     bs.reload();
 
     // Update clientlibTree if something changed in the clientlib structure (do after reload since is needed for next update)

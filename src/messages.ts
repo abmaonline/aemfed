@@ -85,7 +85,7 @@ export function formatMessage(ref: ISourceFileReference | undefined) {
   }
 }
 
-function setFilePath(
+export function setFilePath(
   ref: ISourceFileReference,
   jcrContentRoots: string[]
 ): ISourceFileReference {
@@ -94,12 +94,13 @@ function setFilePath(
     // Try to find the first content root the file exists for
     const jcrContentRoot = jcrContentRoots.find(root => {
       const absolutePath = path.join(root, jcrPath);
-      let stat;
       try {
-        stat = gfs.statSync(absolutePath);
-        // Update filePath, maybe do somewhere else
-        ref.absoluteFilePath = absolutePath;
-        return true;
+        const stat = gfs.statSync(absolutePath);
+        if (!stat.isDirectory()) {
+          // Update filePath, maybe do somewhere else
+          ref.absoluteFilePath = absolutePath;
+          return true;
+        }
       } catch (err) {
         // Exception is thrown if file doesn't exist or other problem with file
       }

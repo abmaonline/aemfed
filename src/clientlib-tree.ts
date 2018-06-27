@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import rpn from "request-promise-native";
+import { JavascriptTrees } from "./javascript-trees";
 // const syncRequest = require('sync-request');
 
 // html source document
@@ -21,9 +22,8 @@ export interface ILib {
   embedded: string[];
 }
 
-// TODO type or class?
-interface ILibs {
-  [key: string]: ILib;
+interface ILibs extends Map<string, ILib> {
+  // Only used for map types
 }
 
 // TODO does this need fixing? Other location/structure?
@@ -39,6 +39,7 @@ export interface IClientlibTreeConfig {
 }
 
 export class ClientlibTree {
+  public jsTrees: JavascriptTrees;
   private name: string;
   private server: string;
   private path: string;
@@ -53,7 +54,8 @@ export class ClientlibTree {
     this.name = config.name;
     this.server = config.server;
     this.path = config.dumpLibsPath || "/libs/granite/ui/content/dumplibs.html";
-    this.libs = {};
+    this.libs = new Map();
+    this.jsTrees = new JavascriptTrees(config, this);
   }
 
   public init() {
@@ -108,10 +110,9 @@ export class ClientlibTree {
 
   public findClientlibs(path: string): ILib[] {
     // path is w/o extension for now
-    // Embedding works for only one level (at least in 6_1), so no recusion needed
+    // Embedding works for only one level (at least in 6_1), so no recursion needed
     const result: ILib[] = [];
-    Object.keys(this.libs).forEach(name => {
-      const lib = this.libs[name];
+    for (const [key, lib] of this.libs) {
       // Add lib itself
       if (lib.name === path) {
         // console.log(`Add lib itself`);
@@ -122,8 +123,26 @@ export class ClientlibTree {
         // console.log(lib);
         result.push(lib);
       }
-    });
+    }
     return result;
+  }
+
+  /**
+   * Try to find the proxy target for a proxied client lib (starts with /etc/clientlibs/), but also works for non proxied libs
+   * @param path Path to clientlib without extension
+   */
+  public findProxyTarget(path: string): string | undefined {
+    // TODO allow extension and check with lib.js or lib.css?
+    const proxyPaths = ["/apps/", "/etc/", "/libs/"]; // TODO get from HTML Lib config?
+    const match = /^(\/etc\.clientlibs\/)(.*)/.exec(path);
+    const paths = match ? proxyPaths.map(prefix => prefix + match[2]) : [path];
+    for (const libPath of paths) {
+      const lib = this.libs.get(libPath);
+      if (lib) {
+        return libPath; // Return works since we use a for, not a forEach with function
+      }
+    }
+    return;
   }
 
   // === Private statics
@@ -141,7 +160,7 @@ export class ClientlibTree {
   private processHtmlRegex(body: string): ILibs {
     const tableRegex = /<table>([\s\S]*?)<\/table>/gim;
     const rowRegex = /<tr>([\s\S]*?)<\/tr>/gim;
-    const libs: ILibs = {};
+    const libs: ILibs = new Map();
 
     const tables = this.getMatches(tableRegex, body);
     // We only need first table for now
@@ -152,7 +171,7 @@ export class ClientlibTree {
       rows.forEach(rowM => {
         const lib = this.processRowRegex(rowM[1]);
         if (lib && lib.name) {
-          libs[lib.name] = lib;
+          libs.set(lib.name, lib);
         }
       });
     }
