@@ -56,7 +56,10 @@ Once started, connect your browser to the local access URL and port provided by 
 ## Requirements
 
 - Works best with a recent version of node/npm, but tested with node 6.x
-- Tested on AEM 6.1, 6.3 and 6.4
+- Tested on AEM 6.1, 6.2, 6.3 and 6.4
+- To be able to see the error messages from AEM, at least version 1.0.0 of the Sling Log Tracer is needed. AEM 6.2 and before have an older version or don't have the bundle at all. Versions of Log Tracer since 1.0.2 can also be installed on older versions of AEM (6.0+ according to the [ticket](https://issues.apache.org/jira/browse/SLING-5762)):
+  - Download the latest Log Tracer bundle from the Sling downloads section (Sling Components > Log Tracer): [https://sling.apache.org/downloads.cgi](https://sling.apache.org/downloads.cgi)
+  - If the latest version causes any trouble, download an older bundle from the Maven Repository: [https://mvnrepository.com/artifact/org.apache.sling/org.apache.sling.tracer](https://mvnrepository.com/artifact/org.apache.sling/org.apache.sling.tracer)
 
 ## Issues
 

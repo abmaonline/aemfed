@@ -27,6 +27,30 @@ interface Instance {
 
 interface IAemSettings {
   // mode: string;
+  bundles: IBundles;
+  configs: IConfigs;
+}
+// Bundles
+interface IBundles {
+  tracer?: IBundleData;
+}
+interface IBundleData {
+  id: number;
+  name: string;
+  fragment: boolean;
+  stateRaw: number;
+  state: string;
+  version: string;
+  symbolicName: string;
+  category: string;
+  props: IBundleProp[];
+}
+interface IBundleProp {
+  key: string;
+  value: any;
+}
+// Configs
+interface IConfigs {
   tracer?: ITracerSettings;
 }
 interface ITracerSettings {
@@ -552,8 +576,30 @@ interface IOsgiPropertiesTracer {
   gzipResponse: IOsgiProperty<boolean>;
 }
 
+function setSlingTracerBundleInfo(instance: Instance): Promise<Instance> {
+  const symbolicName = "org.apache.sling.tracer";
+  const url = instance.server + `/system/console/bundles/${symbolicName}.json`;
+
+  return rpn({
+    json: true,
+    uri: url
+  }).then((data: any) => {
+    if (data && data.data && data.data.length > 0) {
+      const bundleData = data.data[0];
+      if (
+        Object.keys(bundleData).length > 0 &&
+        bundleData.symbolicName === symbolicName
+      ) {
+        instance.aemSettings.bundles.tracer = bundleData;
+      }
+    }
+    return instance;
+  });
+}
+
 function setSlingTracerSettings(instance: Instance): Promise<Instance> {
   const buster = `${Date.now()}`.slice(-3);
+  // TODO use constant for this path, since also used in message
   const url =
     instance.server +
     `/system/console/configMgr/org.apache.sling.tracer.internal.LogTracer?post=true&ts=${buster}`;
@@ -565,7 +611,7 @@ function setSlingTracerSettings(instance: Instance): Promise<Instance> {
     if (data && data.properties && Object.keys(data.properties).length > 0) {
       const { properties }: IOsgiConfig<IOsgiPropertiesTracer> = data;
       // Convert types any way, since default values are always send as strings it seems :sob:
-      instance.aemSettings.tracer = {
+      instance.aemSettings.configs.tracer = {
         enabled: convert2Boolean(properties.enabled.value),
         gzipResponse: convert2Boolean(properties.gzipResponse.value),
         recordingCacheDurationInSecs: convert2Int(
@@ -613,7 +659,10 @@ export function create(args: IWrapperConfig): Promise<void> {
     const name = host;
     // TODO check if server is online? Or poll in between and
     const instance: Instance = {
-      aemSettings: {},
+      aemSettings: {
+        bundles: {},
+        configs: {}
+      },
       clientlibTree: new ClientlibTree({ name, server }),
       name,
       online: true,
@@ -632,25 +681,48 @@ export function create(args: IWrapperConfig): Promise<void> {
   hosts.forEach(host => {
     const instance = instances[host];
     promisesState.push(
-      setSlingTracerSettings(instance)
-        .then(sameInstance => {
-          if (instance.aemSettings.tracer) {
-            const tracerEnabled =
-              instance.aemSettings.tracer.enabled &&
-              instance.aemSettings.tracer.servletEnabled;
-            if (!tracerEnabled) {
-              console.log(
-                chalk`[{blue ${
-                  instance.name
-                }}] {cyan Apache Sling Log Tracer is not enabled, so errors from compiling and minifying Less and Javascript by AEM cannot be shown. To enable it, go to [{yellow /system/console/configMgr}], search for 'Apache Sling Log Tracer' and turn on both 'Enabled' and 'Recording Servlet Enabled}'.`
-              );
-            }
+      setSlingTracerBundleInfo(instance)
+        .then(() => {
+          const tracerBundle = instance.aemSettings.bundles.tracer;
+          // 0.0.2 is the only version that doesn't support the tracers with the servlet
+          // But it can be replaced with 1.0.2 on all AEM 6.0+ instances
+          if (tracerBundle && tracerBundle.version !== "0.0.2") {
+            // Tracer present and valid, check its configuration
+            return setSlingTracerSettings(instance).then(() => {
+              if (instance.aemSettings.configs.tracer) {
+                const tracerEnabled =
+                  instance.aemSettings.configs.tracer.enabled &&
+                  instance.aemSettings.configs.tracer.servletEnabled;
+                if (!tracerEnabled) {
+                  // TODO move path to constant for reuse in call getting json
+                  console.log(
+                    chalk`[{blue ${
+                      instance.name
+                    }}] {cyan Apache Sling Log Tracer is not enabled, so errors from compiling and minifying Less and Javascript by AEM cannot be shown. To enable it, go to [{yellow ${
+                      instance.server
+                    }/system/console/configMgr/org.apache.sling.tracer.internal.LogTracer}] and turn on both 'Enabled' and 'Recording Servlet Enabled'. No restart of aemfed needed}.`
+                  );
+                }
+              } else {
+                console.log(
+                  chalk`[{blue ${
+                    instance.name
+                  }}] {cyan Apache Sling Log Tracer config was not found}.`
+                );
+              }
+              return instance;
+            });
           } else {
-            console.log(
+            // No valid tracer, show message about upgrade
+            const reason = tracerBundle
+              ? `too old (version ${tracerBundle.version})`
+              : `not installed`;
+            console.error(
               chalk`[{blue ${
                 instance.name
-              }}] {cyan Apache Sling Log Tracer config was not found, so probably not supported in this version of AEM}.`
+              }}] {cyan Apache Sling Log Tracer bundle is ${reason}. At least version 1.0.0 is needed for aemfed to intercept AEM error messages. AEM 6.2 and before can install and run 1.0.2 or newer, see the 'Requirements' section in the README for instructions}.`
             );
+            return instance;
           }
         })
         .catch(err => {
@@ -855,7 +927,7 @@ export function reload(host: string, inputList: string[]): void {
   });
   // console.log(cssToRefresh);
 
-  console.log("Determine dependencies: " + (Date.now() - sw) + " ms");
+  // console.log("Determine dependencies: " + (Date.now() - sw) + " ms");
 
   if (css && !js && !html && !other) {
     console.log(
