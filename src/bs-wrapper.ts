@@ -720,7 +720,7 @@ export function create(args: IWrapperConfig): Promise<void> {
             console.error(
               chalk`[{blue ${
                 instance.name
-              }}] {cyan Apache Sling Log Tracer bundle is ${reason}. At least version 1.0.0 is needed for aemfed to intercept AEM error messages. AEM 6.2 and before can install and run 1.0.2 or newer, see the 'Requirements' section in the README for instructions}.`
+              }}] {cyan Apache Sling Log Tracer bundle is ${reason}. At least version 1.0.0 is needed for aemfed to intercept AEM error messages. AEM 6.2 and before can install and run 1.0.2 or newer, see the 'Updating Sling Log Tracer' section in the README for instructions}.`
             );
             return instance;
           }

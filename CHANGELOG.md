@@ -1,5 +1,22 @@
 # aemfed changelog
 
+## 0.0.5
+
+### Error logging improvements
+
+- Capture HTL errors (relevant message is not part of normal log tracer logs)
+- Support a number of functions for each logger to process received log messages, for example to clean yui message or to extract and references to jcr nodes
+- Extract references to jcr nodes in errors and convert them to references to the files on the files system. So if the IDE or shell understands the pattern ([file-path]:[line-nr]:[column-nr]) it can be used to directly navigate to the file, line number and column being referenced in the error. This works for:
+  - HTL
+  - Less
+  - Javascript, if it is processed by YUI or GCC
+  - .content.xml
+- Update Log Tracer version detection and add documentation about installing/updating to a compatible version for AEM 6.2 and before
+
+### Other
+
+- Update aemsync, BrowserSync and TypeScript
+
 ## 0.0.4
 
 - Update BrowserSync to fix issue with reloading all css [#1505](https://github.com/BrowserSync/browser-sync/issues/1505). It introduces a problem with Firefix and the web console however.
