@@ -2,6 +2,10 @@
 
 Speed up your AEM front-end development using [aemsync](https://www.npmjs.com/package/aemsync), [BrowserSync](https://www.npmjs.com/package/browser-sync) and [this](https://github.com/abmaonline/aemfed).
 
+[![Demo of aemfed changing some styling in the WKND project](https://user-images.githubusercontent.com/4146168/42420783-74cf2b58-82cb-11e8-8b36-15bcea9c621e.gif)](https://www.youtube.com/watch?v=sHIHSISOL0w)
+
+> aemfed doing its thing: listening for file changes, uploading them to the running AEM instance, triggering a refresh of the styling in the browser, showing AEM error messages with a reference to the issue in the local file, all within a minute (disclaimer: this is a [special branch](https://github.com/abmaonline/aem-guides-wknd/tree/move-clientlibs-to-components) of the WKND project, optimized for the aemfed workflow).
+
 ## Features
 
 - Watches changes in files and uploads them to AEM using [aemsync](https://www.npmjs.com/package/aemsync)
@@ -61,14 +65,12 @@ npm install npx --global
 Since you already have a `package.json` in your project, adding the startup command as a script is probably the easiest way to run aemfed (make sure the quotes in the command are escaped):
 
 ```json
-[...]
 "devDependencies": {
   "aemfed": "^0.0.5"
 },
 "scripts": {
     "aemfed": "aemfed -t \"http://admin:admin@localhost:4502\" -e \"**/*___jb_(old|tmp)___\" -w \"src/content/jcr_root/\""
 },
-[...]
 ```
 
 ...and run it with
@@ -124,13 +126,16 @@ When the correct version of the Sling Log Tracer is installed (see [Requirements
 It shows the request that triggered the error:
 
 ```
-[localhost:4502] Tracer output for [/etc.clientlibs/wknd/clientlibs/clientlib-base.css?browsersync=1530965506424] (62c5e8ac-69e9-491c-8658-2bbed119d0c2)
+[localhost:4502] Tracer output for [/etc.clientlibs/wknd/clientlibs/clientlib-base.css?browsersync=
+1530965506424] (62c5e8ac-69e9-491c-8658-2bbed119d0c2)
 ```
 
 ...the error message itself:
 
 ```
-[ERROR] LessCompilerImpl: failed to compile less /apps/wknd/components/content/list/clientlib/less/list.less: NameError: variable @brand-secondary2 is undefined in /apps/wknd/components/content/list/clientlib/less/styles/default.less on line 17, column 25:
+[ERROR] LessCompilerImpl: failed to compile less /apps/wknd/components/content/list/clientlib/less/
+list.less: NameError: variable @brand-secondary2 is undefined in /apps/wknd/components/content/list
+/clientlib/less/styles/default.less on line 17, column 25:
 16         &:hover {
 17             background: @brand-secondary2;
 18         }
@@ -139,7 +144,8 @@ It shows the request that triggered the error:
 ...and an attempt to map the location in the error back to the local development environment:
 
 ```
-Local source: ui.apps/src/main/content/jcr_root/apps/wknd/components/content/list/clientlib/less/styles/default.less:17:25
+Local source: ui.apps/src/main/content/jcr_root/apps/wknd/components/content/list/clientlib/less/st
+yles/default.less:17:25
 ```
 
 Most of these errors show up only once after the file has been changed, since AEM caches the result, so its best to keep the aemfed terminal always in clear view (using the terminal in your IDE is a good way to make sure this is the case).
