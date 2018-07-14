@@ -43,7 +43,7 @@ aemfed -h
 Run with specific server, ignore pattern (to ignore IntelliJ temp files) and folder to watch (at the moment this has to be the actual `jcr_root` folder for your project):
 
 ```sh
-aemfed -t "http://admin:admin@localhost:4502" -e "**/*___jb_(old|tmp)___" -w "src/content/jcr_root/"
+aemfed -t "http://admin:admin@localhost:4502" -e "**/*___jb_(old|tmp)___" -w "ui.apps/src/main/content/jcr_root/"
 ```
 
 ### Start with a `package.json` install
@@ -69,7 +69,7 @@ Since you already have a `package.json` in your project, adding the startup comm
   "aemfed": "^0.0.5"
 },
 "scripts": {
-    "aemfed": "aemfed -t \"http://admin:admin@localhost:4502\" -e \"**/*___jb_(old|tmp)___\" -w \"src/content/jcr_root/\""
+    "aemfed": "aemfed -t \"http://admin:admin@localhost:4502\" -e \"**/*___jb_(old|tmp)___\" -w \"ui.apps/src/main/content/jcr_root/\""
 },
 ```
 
