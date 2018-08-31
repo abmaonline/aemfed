@@ -19,7 +19,7 @@ export class StyleTree {
   private jcrRootDir: string;
   // TODO maybe init in constructor, but can we return promises from consturctor?
   private rootNode!: treeModel.Node<IModel>; // definite assignment assertion: assigned in init() function
-  private tree = new treeModel<IModel>();
+  private tree = new treeModel();
 
   // use with '/src/content/jcr_root'
   constructor(relativeJcrPath: string) {

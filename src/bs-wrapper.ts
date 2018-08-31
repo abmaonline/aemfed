@@ -650,7 +650,9 @@ export function create(args: IWrapperConfig): Promise<void> {
   // Assign extra options to bs
   Object.assign(bsOptions, args.bsOptions);
   config = args;
-  config.jcrContentRoots = config.jcrContentRoots || ["ui.apps/src/main/content/jcr_root/"];
+  config.jcrContentRoots = config.jcrContentRoots || [
+    "ui.apps/src/main/content/jcr_root/"
+  ];
 
   // Generate instances
   args.servers.forEach((server, index) => {
