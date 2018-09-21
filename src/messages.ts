@@ -63,7 +63,9 @@ export function getLocalSourceLine({
   column
 }: ISourceFileReference) {
   // If filePath is present, continue
-  const filePath = relativeFilePath || absoluteFilePath;
+  // Note: use absolute path again, since relative is broken in VSCode (1.27.1) and maybe doesn't work in other IDE's either
+  // const filePath = relativeFilePath || absoluteFilePath;
+  const filePath = absoluteFilePath;
   if (filePath) {
     const fragments = [filePath];
     if (line) {

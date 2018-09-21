@@ -43,7 +43,7 @@ aemfed -h
 Run with specific server, ignore pattern (to ignore IntelliJ temp files) and folder to watch (at the moment this has to be the actual `jcr_root` folder for your project):
 
 ```sh
-aemfed -t "http://admin:admin@localhost:4502" -e "**/*___jb_(old|tmp)___" -w "ui.apps/src/main/content/jcr_root/"
+aemfed -t "http://admin:admin@localhost:4502" -e "**/*___jb_+(old|tmp)___" -w "ui.apps/src/main/content/jcr_root/"
 ```
 
 ### Start with a `package.json` install
@@ -69,7 +69,7 @@ Since you already have a `package.json` in your project, adding the startup comm
   "aemfed": "^0.0.5"
 },
 "scripts": {
-    "aemfed": "aemfed -t \"http://admin:admin@localhost:4502\" -e \"**/*___jb_(old|tmp)___\" -w \"ui.apps/src/main/content/jcr_root/\""
+    "aemfed": "aemfed -t \"http://admin:admin@localhost:4502\" -e \"**/*___jb_+(old|tmp)___\" -w \"ui.apps/src/main/content/jcr_root/\""
 },
 ```
 
@@ -171,13 +171,14 @@ The `Local source:` line in the output, is aemfed's attempt to translate the AEM
 
 ## Issues
 
+- aemsync does not respect your projects `filter.xml`, so please be very careful when removing high level items when running aemfed. Changes to root nodes like `/apps`, `/content` and `/etc` are skipped, but when you remove `/etc/clientlibs` from your project (for example after you moved all your clientlibs to proxies in `/apps`) it does exactly that...
 - Using ~ (homedir) in paths to watch does not work as expected when aemfed does all the path processing (paths are surrounded with quotes)
 - YUI minification generates errors for each request if there is an error (Less and GCC generate errors only first time after a resource was changed)
 - When installing the [WKND tutorial](https://github.com/Adobe-Marketing-Cloud/aem-guides-wknd) in a clean AEM 6.3 SP2 or AEM 6.4, it is possible the changes pushed to AEM are not present in the final clientlibs loaded into the pages. Performing a one time clientlib rebuild could fix this: http://localhost:4502/libs/granite/ui/content/dumplibs.rebuild.html and click 'Invalidate Caches' & 'Rebuild Libraries' (last step can take up to 15 minutes)
 - When inspecting Less imports to determine dependencies, very simple logic is used to process the file locations in the `@import`. Resulting in a number of edge cases not working as expected (and throw `ENOENT` exceptions):
   - Less variables are not supported in `@import` (used for example in the [WKND tutorial](https://github.com/Adobe-Marketing-Cloud/aem-guides-wknd) in `ui.apps/src/main/content/jcr_root/apps/wknd/clientlibs/clientlib-site/site/css/grid.less` to switch between the 6.3 and 6.4 `grid-base`). As a result changes in the imported file may not trigger an update in the browser
   - Importing css files in a Less file using `@import` doesn't work, since it appends `.less` to all `@imports`. But since the css probably doesn't need any Less processing anyway, it is better to include it directly in a css.txt (in older versions of AEM it also speeds up the Less processing)
-- The issue, where BrowserSync was reloading all css when it could not find one of the patterns, is fixed with this version. Another issue is introduced however. When visiting the web console (`/system/console`) in Firefox, the links from the top menu stop working correctly. After one or two clicks it keeps redirecting you to the bundles page. This behaviour has not been seen in Chrome or Safari.
+- The issue, where BrowserSync was reloading all css when it could not find one of the patterns, is fixed with this version of BrowserSync. However it introduces a problem with Firefox where navigation is not working when using the proxy. See issue [#1570](https://github.com/BrowserSync/browser-sync/issues/1570).
 - The new log processing code is all over the place, needs it own module(s).
 
 Thanks to the [BrowserSync](https://www.npmjs.com/package/browser-sync) team, to [gavoja](https://github.com/gavoja) for [aemsync](https://www.npmjs.com/package/aemsync) and [kevinweber](https://github.com/kevinweber) for [aem-front](https://www.npmjs.com/package/aem-front).
