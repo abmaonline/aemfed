@@ -1,6 +1,6 @@
 # aemfed
 
-Speed up your AEM front-end development using [aemsync](https://www.npmjs.com/package/aemsync), [BrowserSync](https://www.npmjs.com/package/browser-sync) and [this](https://github.com/abmaonline/aemfed).
+Speed up your AEM front-end development using [aemfed](https://aemfed.io). Powered by [aemsync](https://www.npmjs.com/package/aemsync), [Browsersync](https://www.npmjs.com/package/browser-sync) and [Sling Log Tracer](https://sling.apache.org/documentation/bundles/log-tracers.html).
 
 [![Demo of aemfed changing some styling in the WKND project](https://user-images.githubusercontent.com/4146168/42420783-74cf2b58-82cb-11e8-8b36-15bcea9c621e.gif)](https://www.youtube.com/watch?v=sHIHSISOL0w)
 
@@ -10,7 +10,7 @@ Speed up your AEM front-end development using [aemsync](https://www.npmjs.com/pa
 
 - Watches changes in files and uploads them to AEM using [aemsync](https://www.npmjs.com/package/aemsync)
 - Determines which clientlibs are affected by the uploaded changes
-- Runs [BrowserSync](https://www.npmjs.com/package/browser-sync) in proxy modus so it can communicate with all open instances of your site without any browser plugins. It reloads these pages when the changes have been uploaded, or it only injects the new styling when only styling changes were made, maintaining the state of the page.
+- Runs [Browsersync](https://www.npmjs.com/package/browser-sync) in proxy modus so it can communicate with all open instances of your site without any browser plugins. It reloads these pages when the changes have been uploaded, or it only injects the new styling when only styling changes were made, maintaining the state of the page.
 - Show serverside errors related to clientlibs for each request (so no more digging in the error.log to see why your styling changes won't show up). It captures errors related to HTL templates, Less compilation, Javascript minification (YUI and GCC), .content.xml, etc.
 - If the error messages contain references to nodes in the jcr, it tries to translate them back to the files on your local file system, so you can navigate directly to the file, line and column mentioned in the error (if your IDE/shell supports the pattern).
 
@@ -95,7 +95,7 @@ Once started, the BrowserSync module will show the urls for the proxy that enabl
  ------------------------------------
 ```
 
-If you connect your browsers to the `Local` or `External` Access URL, the BrowserSync reload script will be injected into the pages you visit, allowing aemfed to reload pages automatically after changes have been uploaded to AEM.
+If you connect your browsers to the `Local` or `External` Access URL, the Browsersync reload script will be injected into the pages you visit, allowing aemfed to reload pages automatically after changes have been uploaded to AEM.
 
 Navigate to the page you want to work on and make some changes to the clientlib files under the path provided during startup. When saving the file, aemfed reports the detected file changes:
 
@@ -178,7 +178,7 @@ The `Local source:` line in the output, is aemfed's attempt to translate the AEM
 - When inspecting Less imports to determine dependencies, very simple logic is used to process the file locations in the `@import`. Resulting in a number of edge cases not working as expected (and throw `ENOENT` exceptions):
   - Less variables are not supported in `@import` (used for example in the [WKND tutorial](https://github.com/Adobe-Marketing-Cloud/aem-guides-wknd) in `ui.apps/src/main/content/jcr_root/apps/wknd/clientlibs/clientlib-site/site/css/grid.less` to switch between the 6.3 and 6.4 `grid-base`). As a result changes in the imported file may not trigger an update in the browser
   - Importing css files in a Less file using `@import` doesn't work, since it appends `.less` to all `@imports`. But since the css probably doesn't need any Less processing anyway, it is better to include it directly in a css.txt (in older versions of AEM it also speeds up the Less processing)
-- The issue, where BrowserSync was reloading all css when it could not find one of the patterns, is fixed with this version of BrowserSync. However it introduces a problem with Firefox where navigation is not working when using the proxy. See issue [#1570](https://github.com/BrowserSync/browser-sync/issues/1570).
+- The issue, where Browsersync was reloading all css when it could not find one of the patterns, is fixed with this version of Browsersync. However it introduces a problem with Firefox where navigation is not working when using the proxy. See issue [#1570](https://github.com/BrowserSync/browser-sync/issues/1570).
 - The new log processing code is all over the place, needs it own module(s).
 
-Thanks to the [BrowserSync](https://www.npmjs.com/package/browser-sync) team, to [gavoja](https://github.com/gavoja) for [aemsync](https://www.npmjs.com/package/aemsync) and [kevinweber](https://github.com/kevinweber) for [aem-front](https://www.npmjs.com/package/aem-front).
+Thanks to the [Browsersync](https://www.npmjs.com/package/browser-sync) team, to [gavoja](https://github.com/gavoja) for [aemsync](https://www.npmjs.com/package/aemsync) and [kevinweber](https://github.com/kevinweber) for [aem-front](https://www.npmjs.com/package/aem-front).

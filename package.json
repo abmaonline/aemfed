@@ -1,7 +1,7 @@
 {
   "name": "aemfed",
   "version": "0.0.5",
-  "description": "Upload front-end changes into AEM and refresh relevant resources in the page for easier development.",
+  "description": "Upload front-end changes into AEM, refresh relevant resources in the page and get instant notifications from the error.log, all for easier and faster development.",
   "author": {
     "name": "Matthijs Abma"
   },
