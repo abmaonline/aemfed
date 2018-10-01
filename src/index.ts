@@ -108,31 +108,57 @@ export function init(): void {
   const targetList = targets.split(",");
 
   // use string because the regex object maintains state, so can't be reused safely
+  // Caution: group numbers are used to build the final statement, so they must remain the same
+  // For styling remove the parts for .min and .hash from group 1, so Browsersync is better able
+  // to match the file names provided by aemfed to the names in the html of the page when
+  // trying to injecting new styling changes
   const styleLinkPattern =
     '(<link rel="stylesheet" href="/[^">]*?)(.min)?(.[0-9a-f]{32})?(.css)("[^>]*>)';
+  // Don't strip .min or hash from js, since it is not injected (and .min is needed to trigger compressor)
+  // To keep regex group nr's the same, nest them in group 1
+  const jsScriptPattern =
+    '(<script type=".*?/javascript" src="/[^">]*?(.min)?(.[0-9a-f]{32})?)(.js)("[^>]*>)';
+
+  function rewriteClientlibIncludes(
+    matchedLinkElement: string,
+    pattern: string
+  ) {
+    const regex = new RegExp(pattern, "i"); // g is not needed since we work with single item
+    const match = regex.exec(matchedLinkElement);
+    if (match) {
+      // Add cache buster to prevent caching issues when something like
+      // ACS Commons Versioned Clientlibs is not used
+      return match[1] + match[4] + "?browsersync=" + Date.now() + match[5];
+    } else {
+      console.warn(
+        "Could not rematch " +
+          matchedLinkElement +
+          " to rewrite url w/o .min and .hash"
+      );
+      return matchedLinkElement;
+    }
+  }
+
   bsWrapper.create({
     bsOptions: {
       rewriteRules: [
         {
           fn: (req, res, matchedLinkElement) => {
-            const regex = new RegExp(styleLinkPattern, "i"); // g is not needed since we work with single item
-            const match = regex.exec(matchedLinkElement);
-            if (match) {
-              // Return the part w/o .min and .hash for easier matching when injecting
-              // Add cache buster based on bs Reloader.prototype.generateUniqueString
-              return (
-                match[1] + match[4] + "?browsersync=" + Date.now() + match[5]
-              );
-            } else {
-              console.warn(
-                "Could not rematch " +
-                  matchedLinkElement +
-                  " to rewrite url w/o .min and .hash"
-              );
-              return matchedLinkElement;
-            }
+            return rewriteClientlibIncludes(
+              matchedLinkElement,
+              styleLinkPattern
+            );
           },
           match: new RegExp(styleLinkPattern, "gi")
+        },
+        {
+          fn: (req, res, matchedLinkElement) => {
+            return rewriteClientlibIncludes(
+              matchedLinkElement,
+              jsScriptPattern
+            );
+          },
+          match: new RegExp(jsScriptPattern, "gi")
         }
       ]
     },
