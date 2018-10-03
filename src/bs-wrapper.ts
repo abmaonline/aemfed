@@ -229,6 +229,11 @@ const slingProcessorProfile: ITracerProfile = {
   level: "error",
   logger: "org.apache.sling.engine.impl.SlingRequestProcessorImpl"
 };
+const slingSightlyProfile: ITracerProfile = {
+  level: "error",
+  logger: "org.apache.sling.scripting.sightly"
+};
+
 // tslint:enable:object-literal-sort-keys
 // Used for querying
 const profiles = [
@@ -239,14 +244,16 @@ const profiles = [
   htmlLibProfile,
   cacheLibProfile,
   acsProfile,
-  slingProcessorProfile
+  slingProcessorProfile,
+  slingSightlyProfile
 ];
 
 // Tracer configs
+// TODO maybe just add all tracer configs to all requests?
 const tracerConfigs: ITracerConfig[] = [
   // Page, most logging is present in call to page itself (especially for gcc)
   {
-    pattern: /\.html(\?.*|$)/,
+    pattern: /\.(html|jsp)(\?.*|$)/,
     profiles: [
       yuiProfile,
       jscompProfile,
@@ -255,7 +262,8 @@ const tracerConfigs: ITracerConfig[] = [
       htmlLibProfile,
       cacheLibProfile,
       acsProfile,
-      slingProcessorProfile
+      slingProcessorProfile,
+      slingSightlyProfile
     ]
   },
   // Styling, for individual calls to css in case of injection
@@ -273,6 +281,12 @@ const tracerConfigs: ITracerConfig[] = [
       htmlLibProfile,
       cacheLibProfile
     ]
+  },
+  // Json, in case of api requests
+  // What is a good generic pattern?
+  {
+    pattern: /\.json(\?.*|$)/,
+    profiles: [slingProcessorProfile]
   }
 ];
 
@@ -320,6 +334,7 @@ function processTracer(
     : header;
   if (slingTracerRequestId) {
     // Use timeout, since json may not be ready yet
+    // TODO is this true?
     setTimeout(() => {
       const tracerUrl =
         instance.server +
@@ -333,13 +348,11 @@ function processTracer(
       }).then((data: any) => {
         if (data && !data.error) {
           const trace: ITracer = data;
-          if (trace.logs.length) {
-            generateReport(instance, url, slingTracerRequestId, trace).then(
-              report => {
-                report.map(line => console.log(line));
-              }
-            );
-          }
+          generateReport(instance, url, slingTracerRequestId, trace).then(
+            report => {
+              report.map(line => console.log(line));
+            }
+          );
         }
       });
     }, 100);
@@ -376,12 +389,8 @@ function generateReport(
   };
   // tslint:enable:object-literal-sort-keys
 
+  // Used for the formatted messages from trace.logs[]
   const report: string[] = [];
-
-  report.push(
-    chalk`[{blue ${instance.name}}] Tracer output for [{yellow ${url ||
-      "[url missing]"}}] (${slingTracerRequestId})`
-  );
 
   const reportMessages: IReportMessage[] = [];
   // Magic for JS
@@ -498,35 +507,66 @@ function generateReport(
     onlyPaths.splice(0, onlyPaths.length);
   }
 
-  // Process errors in request progress log (descriptive sightly errors are only in here)
-  const requestProgressErrorLogs = trace.requestProgressLogs
-    .map(message => {
-      const match = /\d+ LOG SCRIPT ERROR: (.*)/.exec(message);
-      if (match) {
-        const postMessage = match[1];
-        // Test if not a ScriptEvaluationException with empty message
-        // (thrown several times in the upstream stack trace)
-        // In AEM 6.4 it is thrown also with the original message...
-        if (!/ScriptEvaluationException:$/.test(postMessage)) {
-          // Try to find jcr paths
-          const ref = messages.getRef(
-            message,
-            /([^:[\]*'"|\s]+) at line number (\d+) at column number (\d+)/,
-            config.jcrContentRoots
-          );
-          if (ref) {
-            reportMessages.push({
-              postMessage,
-              sourceRef: ref
-            });
+  // Process errors in request progress log (descriptive sightly/jsp errors are only in here)
+  // TODO work with some sort of error message list anyway (so no printing in here)
+  // so we can also print the relative paths with their message instead of at the bottom
+  const requestProgressErrorLogsRaw: string[] = [];
+  const requestProgressErrorLogs = !trace.requestProgressLogs
+    ? []
+    : (trace.requestProgressLogs
+        .map(message => {
+          const match = /\d+ LOG SCRIPT ERROR: (.*)/.exec(message);
+          if (!match) {
+            return;
           }
 
-          // Write out message
-          return chalk`[{red ERROR}] {cyan Sling Request Progress Tracker}: ${postMessage}`;
-        }
-      }
-    })
-    .filter(message => typeof message === "string") as string[];
+          const postMessage = match[1];
+
+          // Test if not a ScriptEvaluationException with empty message
+          // (thrown several times in the upstream stack trace)
+          if (/ScriptEvaluationException:$/.test(postMessage)) {
+            return;
+          }
+
+          // Check if not already at the end of another message
+          const matchingMessages = requestProgressErrorLogsRaw.filter(
+            logMessage => postMessage.endsWith(logMessage)
+          );
+          // TODO add some check for empty or short postMessages (since they 'always' match endsWith)?
+
+          // Test if message was not yet in requestProgressErrorLogsRaw
+          if (matchingMessages.length === 0) {
+            requestProgressErrorLogsRaw.push(postMessage);
+
+            // Try to find jcr paths in message
+            let ref: messages.ISourceFileReference | undefined;
+            // NOTE, when using global patterns, make sure to reset the regex after test call
+            const progressLogPatterns = [
+              /([^:[\]*'"|\s]+) at line number (\d+) at column number (\d+)/, // htl
+              /([^:[\]*'"|\s]+)\((\d+),(\d+)\)/ // jsp
+            ];
+            progressLogPatterns.some(pattern => {
+              const patternMatches = pattern.test(message);
+              if (patternMatches) {
+                ref = messages.getRef(message, pattern, config.jcrContentRoots);
+              }
+              // Stop looping when pattern is found
+              return patternMatches;
+            });
+
+            // If local ref was generated, add to list
+            if (ref) {
+              reportMessages.push({
+                postMessage,
+                sourceRef: ref
+              });
+            }
+
+            // Return message to map
+            return chalk`[{red ERROR}] {cyan Sling Request Progress Tracker}: ${postMessage}`;
+          }
+        })
+        .filter(message => typeof message === "string") as string[]);
 
   // All sourceRefs are present, last fix round
   const promises: Array<Promise<messages.ISourceFileReference>> = [];
@@ -545,7 +585,21 @@ function generateReport(
       .filter((filePath): filePath is string => typeof filePath === "string")
       .filter(onlyUnique);
 
-    return report.concat(requestProgressErrorLogs, uniqueLocalPaths);
+    // Combine logs, requestProgressLogs and local paths into final report
+    const finalReport = report.concat(
+      requestProgressErrorLogs,
+      uniqueLocalPaths
+    );
+
+    // If there is something to report, add header with trace id
+    if (finalReport.length > 0) {
+      finalReport.unshift(
+        chalk`[{blue ${instance.name}}] Tracer output for [{yellow ${url ||
+          "[url missing]"}}] (${slingTracerRequestId})`
+      );
+    }
+
+    return finalReport;
   });
 }
 
@@ -787,7 +841,7 @@ interface ITracer {
   method: string;
   time: number;
   timestamp: number;
-  requestProgressLogs: string[];
+  requestProgressLogs?: string[]; // Optional, missing in some minimal requests
   queries: IQuery[];
   logs: ILog[];
   loggerNames: string[];

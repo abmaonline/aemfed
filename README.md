@@ -11,7 +11,7 @@ Speed up your AEM front-end development using [aemfed](https://aemfed.io). Power
 - Watches changes in files and uploads them to AEM using [aemsync](https://www.npmjs.com/package/aemsync)
 - Determines which clientlibs are affected by the uploaded changes
 - Runs [Browsersync](https://www.npmjs.com/package/browser-sync) in proxy modus so it can communicate with all open instances of your site without any browser plugins. It reloads these pages when the changes have been uploaded, or it only injects the new styling when only styling changes were made, maintaining the state of the page.
-- Show serverside errors related to clientlibs for each request (so no more digging in the error.log to see why your styling changes won't show up). It captures errors related to HTL templates, Less compilation, Javascript minification (YUI and GCC), .content.xml, etc.
+- Show serverside errors related to clientlibs for each request (so no more digging in the error.log to see why your styling changes won't show up). It captures errors related to HTL templates, JSP files, Less compilation, Javascript minification (YUI and GCC), .content.xml, etc.
 - If the error messages contain references to nodes in the jcr, it tries to translate them back to the files on your local file system, so you can navigate directly to the file, line and column mentioned in the error (if your IDE/shell supports the pattern).
 
 ## Installation
