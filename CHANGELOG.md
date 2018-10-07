@@ -1,5 +1,23 @@
 # aemfed changelog
 
+## 0.0.6
+
+### Error logging improvements
+
+- Add support for error logging in JSP files
+- Add initial error log support for json requests
+- Add more types of Sightly errors for requests (messages are limited since the stacktrace is missing)
+- Show only the first message in case of repeating, nested exception messages (HTL/JSP)
+- Use absolute path for local file reference, since not all environments understand paths relative to project folder
+- Show HTL/JSP errors, even when there are no actual exceptions in the request
+
+### Other
+
+- Use the css browser cache buster also for javascript, to prevent caching issues in case no [Versioned Clientlibs](https://adobe-consulting-services.github.io/acs-aem-commons/features/versioned-clientlibs/index.html) are used
+- Updated dependencies
+  - Browsersync 2.26.0 fixes the issue preventing navigation in Firefox: [#1570](https://github.com/BrowserSync/browser-sync/issues/1570)
+  - aemsync ignore pattern module was updated, so check if yours is still working
+
 ## 0.0.5
 
 ### Error logging improvements
