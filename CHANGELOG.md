@@ -1,5 +1,10 @@
 # aemfed changelog
 
+## 0.0.7
+
+- Use tarballs to reference customized dependencies to speed up `npm install` and fix an issue when npm is trying to use ssh to get the reference
+- Updated dependencies
+
 ## 0.0.6
 
 ### Error logging improvements
