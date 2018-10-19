@@ -15,12 +15,12 @@
     "lib"
   ],
   "dependencies": {
-    "aemsync": "github:abmaonline/aemsync#a2bed54",
+    "aemsync": "https://github.com/abmaonline/aemsync/tarball/a2bed54",
     "browser-sync": "^2.26.3",
     "chalk": "^2.4.1",
     "decode-html": "^2.0.0",
     "graceful-fs": "^4.1.9",
-    "less-tree": "github:abmaonline/less-tree#6168498",
+    "less-tree": "https://github.com/abmaonline/less-tree/tarball/e37873a",
     "minimist": "^1.2.0",
     "opn": "^5.4.0",
     "path": "^0.12.7",
