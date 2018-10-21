@@ -2,10 +2,11 @@
   "name": "aemfed",
   "version": "0.0.7",
   "description": "Upload front-end changes into AEM, refresh relevant resources in the page and get instant notifications from the error.log, all for easier and faster development.",
+  "homepage": "https://aemfed.io",
   "author": {
     "name": "Matthijs Abma"
   },
-  "repository": "abmaonline/aemfed",
+  "repository": "github:abmaonline/aemfed",
   "license": "MIT",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -14,6 +15,9 @@
     "bin",
     "lib"
   ],
+  "engines": {
+    "node": ">=6.14.4"
+  },
   "dependencies": {
     "aemsync": "https://github.com/abmaonline/aemsync/tarball/a2bed54",
     "browser-sync": "^2.26.3",
