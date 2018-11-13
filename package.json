@@ -24,6 +24,7 @@
     "chalk": "^2.4.1",
     "decode-html": "^2.0.0",
     "graceful-fs": "^4.1.15",
+    "https-proxy-agent": "^2.2.1",
     "less-tree": "https://github.com/abmaonline/less-tree/tarball/e37873a",
     "minimist": "^1.2.0",
     "opn": "^5.4.0",
@@ -31,7 +32,8 @@
     "recursive-readdir": "^2.2.2",
     "request": "^2.88.0",
     "request-promise-native": "^1.0.5",
-    "tree-model": "^1.0.7"
+    "tree-model": "^1.0.7",
+    "util.promisify": "^1.0.0"
   },
   "devDependencies": {
     "@types/chokidar": "^1.7.5",
@@ -43,6 +45,7 @@
     "@types/recursive-readdir": "^2.2.0",
     "@types/request": "^2.48.1",
     "@types/request-promise-native": "^1.0.15",
+    "@types/util.promisify": "^1.0.0",
     "@types/vinyl": "^2.0.2",
     "husky": "^1.1.3",
     "precise-commits": "^1.0.2",
