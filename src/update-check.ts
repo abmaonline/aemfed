@@ -1,8 +1,12 @@
+// Based on https://github.com/zeit/update-check
 import fs from "fs";
 import ProxyAgent from "https-proxy-agent";
 import { tmpdir } from "os";
 import { join } from "path";
 import rpn from "request-promise-native";
+// WARNING: The typing for this version of promisify is 'any[]', so not very helpfull.
+// Works ok in Node.js 8.10.x, but copying the definitions from there, doesn;t have the
+// same effect (maybe because the structure of the typing of the fs module also changed).
 import promisify from "util.promisify";
 
 const writeFile = promisify(fs.writeFile);
@@ -21,22 +25,23 @@ interface IDistResponse {
 interface IConfig {
   interval: number;
   distTag: string;
+  url: string;
 }
 
 const compareVersions = (a: string, b: string) =>
   a.localeCompare(b, "en-US", { numeric: true });
 
-const getFile = async (details: string, distTag: string) => {
+const getFile = async (name: string, distTag: string) => {
   const rootDir = tmpdir();
   const subDir = join(rootDir, "update-check");
 
   if (!fs.existsSync(subDir)) {
-    mkdir(subDir);
+    await mkdir(subDir);
   }
 
-  const name = `${details}-${distTag}.json`;
+  const fileName = `${name}-${distTag}.json`;
 
-  return join(subDir, name);
+  return join(subDir, fileName);
 };
 
 const evaluateCache = async (file: string, time: number, interval: number) => {
@@ -119,7 +124,8 @@ const getMostRecent = async (
 
 const defaultConfig: IConfig = {
   distTag: "latest",
-  interval: 3600000
+  interval: 3600000,
+  url: "https://aemfed.io/latest"
 };
 
 export async function check(packageInfo: any, config?: IConfig) {
@@ -129,10 +135,10 @@ export async function check(packageInfo: any, config?: IConfig) {
     );
   }
 
-  const details = packageInfo.name;
+  const name = packageInfo.name;
   const time = Date.now();
-  const { distTag, interval } = { ...defaultConfig, ...config };
-  const file = await getFile(details, distTag);
+  const { distTag, interval, url } = { ...defaultConfig, ...config };
+  const file = await getFile(name, distTag);
 
   let latest;
   let shouldCheck = true;
@@ -140,8 +146,6 @@ export async function check(packageInfo: any, config?: IConfig) {
   ({ shouldCheck, latest } = await evaluateCache(file, time, interval));
 
   if (shouldCheck) {
-    // TODO make config?
-    const url = "https://aemfed.io/latest";
     latest = await getMostRecent(url, distTag, packageInfo);
 
     // If we pulled an update, we need to update the cache
