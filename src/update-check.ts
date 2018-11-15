@@ -1,8 +1,8 @@
 // Based on https://github.com/zeit/update-check
 import fs from "fs";
-import ProxyAgent from "https-proxy-agent";
 import { tmpdir } from "os";
 import { join } from "path";
+import ProxyAgent from "proxy-agent";
 import rpn from "request-promise-native";
 // WARNING: The typing for this version of promisify is 'any[]', so not very helpfull.
 // Works ok in Node.js 8.10.x, but copying the definitions from there, doesn;t have the
@@ -89,10 +89,10 @@ const loadPackage = (url: string, packageInfo: any) => {
 
   // Determine proxy
   const proxyAddress =
-    process.env.https_proxy ||
-    process.env.HTTPS_PROXY ||
     process.env.http_proxy ||
-    process.env.HTTP_PROXY;
+    process.env.HTTP_PROXY ||
+    process.env.https_proxy ||
+    process.env.HTTPS_PROXY;
   const proxyAgent = proxyAddress ? new ProxyAgent(proxyAddress) : undefined;
 
   const options = {
