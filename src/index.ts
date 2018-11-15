@@ -105,10 +105,12 @@ export function init(): void {
   console.log("Exclude:", exclude);
   separate();
 
+  // TODO after restructuring bs-wrapper include in initialization chain
   UpdateCheck.check(packageInfo)
     .then(update => {
-      if (update) {
-        console.log(`The latest version is ${update.latest}. Please update!`);
+      const message = messages.formatUpdateMessage(update);
+      if (message) {
+        console.log(message);
       }
     })
     .catch(err => {

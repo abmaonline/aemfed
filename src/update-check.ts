@@ -28,6 +28,13 @@ interface IConfig {
   url: string;
 }
 
+export interface IUpdateCheck {
+  fromCache: boolean;
+  latest: string;
+  name: string;
+  version: string;
+}
+
 const compareVersions = (a: string, b: string) =>
   a.localeCompare(b, "en-US", { numeric: true });
 
@@ -135,7 +142,7 @@ export async function check(packageInfo: any, config?: IConfig) {
     );
   }
 
-  const name = packageInfo.name;
+  const { name, version } = packageInfo;
   const time = Date.now();
   const { distTag, interval, url } = { ...defaultConfig, ...config };
   const file = await getFile(name, distTag);
@@ -156,10 +163,13 @@ export async function check(packageInfo: any, config?: IConfig) {
     const comparision = compareVersions(packageInfo.version, latest);
 
     if (comparision === -1) {
-      return {
+      const updateResult: IUpdateCheck = {
         fromCache: !shouldCheck,
-        latest
+        latest,
+        name,
+        version
       };
+      return updateResult;
     }
   }
 

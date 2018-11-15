@@ -20,10 +20,12 @@
   },
   "dependencies": {
     "aemsync": "https://github.com/abmaonline/aemsync/tarball/a2bed54",
+    "boxen": "^2.0.0",
     "browser-sync": "^2.26.3",
     "chalk": "^2.4.1",
     "decode-html": "^2.0.0",
     "graceful-fs": "^4.1.15",
+    "is-installed-globally": "^0.1.0",
     "less-tree": "https://github.com/abmaonline/less-tree/tarball/e37873a",
     "minimist": "^1.2.0",
     "opn": "^5.4.0",

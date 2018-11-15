@@ -1,6 +1,9 @@
+import boxen from "boxen";
 import chalk from "chalk";
 import gfs from "graceful-fs";
+import isInstalledGlobally from "is-installed-globally";
 import path from "path";
+import { IUpdateCheck } from "./update-check";
 
 export interface IMapping {
   jcrPath: number; // Use < 0 for non existing
@@ -84,6 +87,25 @@ export function formatMessage(ref: ISourceFileReference | undefined) {
     if (combined) {
       return `Local source: ${chalk.blue(combined)}`;
     }
+  }
+}
+
+export function formatUpdateMessage(update?: IUpdateCheck) {
+  if (update) {
+    const message = `Update available ${chalk.dim(update.version)}${chalk.reset(
+      " → "
+    )}${chalk.green(update.latest)} \nRun ${chalk.cyan(
+      "npm i " + (isInstalledGlobally ? "-g " : "") + update.name
+    )} to update`;
+
+    const boxenOpts: boxen.Options = {
+      align: "center",
+      borderColor: "yellow",
+      borderStyle: "round",
+      margin: 1,
+      padding: 1
+    };
+    return boxen(message, boxenOpts);
   }
 }
 
