@@ -8,6 +8,7 @@ import path from "path";
 import packageInfo from "./../package.json";
 import * as bsWrapper from "./bs-wrapper";
 import * as messages from "./messages";
+import * as UpdateCheck from "./update-check";
 
 function separate() {
   console.log("---------------------------------------");
@@ -103,6 +104,19 @@ export function init(): void {
   console.log("Interval:", pushInterval);
   console.log("Exclude:", exclude);
   separate();
+
+  // TODO after restructuring bs-wrapper include in initialization chain
+  UpdateCheck.check(packageInfo)
+    .then(update => {
+      const message = messages.formatUpdateMessage(update);
+      if (message) {
+        console.log(message);
+      }
+    })
+    .catch(err => {
+      // TODO check what to show
+      console.error(`Failed to check for updates: ${err}`);
+    });
 
   // Config BrowserSync
   const targetList = targets.split(",");
