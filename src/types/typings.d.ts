@@ -8,3 +8,20 @@ declare module "*.json" {
 // Remove again when upgrading to node 8.x d.ts, but it looks like it will use fs.PathLike
 // when it is present (at least when transpiling from the commandline)
 type PathLike = string | Buffer;
+
+// Client types
+type printQrCode = () => void;
+
+// Also add to Window, otherwise it throws errors when not available
+interface Window {
+  qr?: printQrCode;
+}
+interface BrowserSyncClient {
+  qr?: printQrCode;
+}
+
+declare namespace BsQrCode {
+  interface IOptions {
+    onload: boolean;
+  }
+}
