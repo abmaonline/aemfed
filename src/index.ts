@@ -95,7 +95,7 @@ export function init(): void {
   const pushInterval: number = parseInt(args.i, 10) || 100;
   const exclude: string = args.e || "";
   const startPage: string = args.o || "false";
-  const startBrowser: string = args.browser || "google chrome";
+  const startBrowser: string = args.b || "google chrome";
 
   separate();
   console.log("Working dirs:", workingDirs);

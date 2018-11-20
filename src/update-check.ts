@@ -131,7 +131,7 @@ const getMostRecent = async (
 
 const defaultConfig: IConfig = {
   distTag: "latest",
-  interval: 3600000,
+  interval: 64800000,
   url: "https://aemfed.io/latest"
 };
 
