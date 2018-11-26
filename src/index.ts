@@ -9,6 +9,9 @@ import packageInfo from "./../package.json";
 import * as bsWrapper from "./bs-wrapper";
 import * as messages from "./messages";
 import * as UpdateCheck from "./update-check";
+// vscode and tslint order the '= require' differently
+// tslint:disable-next-line:ordered-imports
+import bsQrCodePlugin = require("./bs-qr-code");
 
 function separate() {
   console.log("---------------------------------------");
@@ -24,6 +27,7 @@ Options:
   -i sync_interval     Update interval in milliseconds; default is 100
   -o open_page         Browser page to be opened after successful launch; default is "false".
   -b browser           Browser where page should be opened in; this parameter is platform dependent; for example, Chrome is "google chrome" on OS X, "google-chrome" on Linux and "chrome" on Windows; default is "google chrome"
+  -q load_qr           Enable QR code plugin for connected browsers; default is "true".
   -h                   Displays this screen
   -v                   Displays version of this package`;
 
@@ -97,6 +101,17 @@ export function init(): void {
   const startPage: string = args.o || "false";
   const startBrowser: string = args.b || "google chrome";
 
+  // Build browser sync plugins list
+  const bsPlugins = [];
+  if (args.q !== "false") {
+    bsPlugins.push({
+      module: bsQrCodePlugin,
+      options: {
+        onload: false
+      }
+    });
+  }
+
   separate();
   console.log("Working dirs:", workingDirs);
   console.log("Targets:", targets);
@@ -155,6 +170,7 @@ export function init(): void {
 
   bsWrapper.create({
     bsOptions: {
+      plugins: bsPlugins,
       rewriteRules: [
         {
           fn: (req, res, matchedLinkElement) => {

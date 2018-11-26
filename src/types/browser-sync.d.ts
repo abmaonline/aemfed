@@ -62,7 +62,7 @@ declare namespace browserSync {
      * Default: []
      * Note: requires at least version 2.8.0
      */
-    serveStatic?: string[];
+    serveStatic?: string[] | ServeStatic[];
     /**
      * Enable https for localhost development.
      * Note - this is not needed for proxy option as it will be inferred from your target url.
@@ -339,6 +339,7 @@ declare namespace browserSync {
   }
 
   interface SnippetOptions {
+    async?: boolean;
     ignorePaths?: string;
     rule?: { match?: RegExp; fn?: (snippet: string, match: string) => any };
   }
@@ -365,6 +366,17 @@ declare namespace browserSync {
   interface StreamOptions {
     once?: boolean;
     match?: string | string[];
+  }
+
+  interface ServeStatic {
+    route: string | string[];
+    dir: string | string[];
+  }
+
+  // Maybe import definitions from socket.io?
+  interface Sockets {
+    emit: (event: string, options: any) => void;
+    on: (event: string, callback: () => void) => void;
   }
 
   interface BrowserSyncStatic extends BrowserSyncInstance {
@@ -471,6 +483,8 @@ declare namespace browserSync {
      * A simple true/false flag to determine if the current instance is paused
      */
     paused: boolean;
+    // Maybe import definitions from socket.io?
+    sockets: Sockets;
   }
 }
 

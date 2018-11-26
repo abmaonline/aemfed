@@ -13,7 +13,8 @@
   "bin": "bin/aemfed.js",
   "files": [
     "bin",
-    "lib"
+    "lib",
+    "vendor"
   ],
   "engines": {
     "node": ">=6.14.4"
