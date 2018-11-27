@@ -6,6 +6,15 @@ Speed up your AEM front-end development using [aemfed](https://aemfed.io). Power
 
 > aemfed doing its thing: listening for file changes, uploading them to the running AEM instance, triggering a refresh of the styling in the browser, showing AEM error messages with a reference to the issue in the local file, all within a minute (disclaimer: this is a [special branch](https://github.com/abmaonline/aem-guides-wknd/tree/move-clientlibs-to-components) of the WKND project, optimized for the aemfed workflow).
 
+#### Contents
+
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Requirements](#requirements)
+- [Issues](#issues)
+- [Users](#users)
+
 ## Features
 
 - Watches changes in files and uploads them to AEM using [aemsync](https://www.npmjs.com/package/aemsync)
@@ -152,6 +161,14 @@ Most of these errors show up only once after the file has been changed, since AE
 
 The `Local source:` line in the output, is aemfed's attempt to translate the AEM error location back to the local file, line and column. So locating the issue becomes much easier. Some IDE's and shells even recognize the pattern and turn it into a link, to make your life even easier.
 
+### Synchronize browsers
+
+Using Browsersync it is possible to refresh content in all the browsers that connect to its local or external access urls. This includes phones and tablets, as long as they are on the same network and the external port used by Browsersync is open (not blocked by a firewall).
+
+Connecting mobile devices can be a drag, since you have to type in the machine name or ip, port and probably part of the path to the page you're interested in, all on the tiny onscreen keyboard.
+
+To speedup developing and testing on mobile devices, a QR code can be generated from the browser console, using the command `qr()`. The QR code will contain the external access url and path for the active page in the browser. Scan the QR code with the device, login to AEM if needed, and see all of you changes immediately on mobile devices too.
+
 ## Requirements
 
 - Works best with a recent version of node/npm, but tested with node 6.14 LTS
@@ -179,5 +196,16 @@ The `Local source:` line in the output, is aemfed's attempt to translate the AEM
   - Less variables are not supported in `@import` (used for example in the [WKND tutorial](https://github.com/Adobe-Marketing-Cloud/aem-guides-wknd) in `ui.apps/src/main/content/jcr_root/apps/wknd/clientlibs/clientlib-site/site/css/grid.less` to switch between the 6.3 and 6.4 `grid-base`). As a result changes in the imported file may not trigger an update in the browser
   - Importing css files in a Less file using `@import` doesn't work, since it appends `.less` to all `@imports`. But since the css probably doesn't need any Less processing anyway, it is better to include it directly in a css.txt (in older versions of AEM it also speeds up the Less processing)
 - The new log processing code is all over the place, needs it own module(s).
+
+## Users
+
+Some of the projects using it:
+
+- [AEM Sites Core Components](https://github.com/adobe/aem-core-wcm-components)
+- [AEM Sites WKND Tutorial](https://helpx.adobe.com/experience-manager/kt/sites/using/getting-started-wknd-tutorial-develop/part3.html#develop-aemfed)
+
+## Licence
+
+MIT
 
 Thanks to the [Browsersync](https://www.npmjs.com/package/browser-sync) team, to [gavoja](https://github.com/gavoja) for [aemsync](https://www.npmjs.com/package/aemsync) and [kevinweber](https://github.com/kevinweber) for [aem-front](https://www.npmjs.com/package/aem-front).

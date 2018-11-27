@@ -1,5 +1,13 @@
 # aemfed changelog
 
+## 0.0.8
+
+- QR code support in the browser console. Type `qr()` in the console of browsers connected to aemfed, to get an ASCII-art QR code with the active url in it, for easier synchronisation with mobile devices. At the moment uses an ES6 target (just as the rest of the project), so IE11 and earlier are not supported
+- Add an npm-style version check, that checks once a day if a newer version of aemfed has been pushed to npm. Since aemfed is likely to be installed global, automated options to check for updates are limited. This option should help with that
+- Fixes the `-b` browser startup argument
+- Explicitly specify node 6.14.4 LTS as the oldest supported version in `package.json` and pin the accompanying TypeScript definition
+- Updated dependencies
+
 ## 0.0.7
 
 - Use tarballs to reference customized dependencies to speed up `npm install` and fix an issue when npm is trying to use ssh to get the reference
