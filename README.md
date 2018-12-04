@@ -171,7 +171,7 @@ To speedup developing and testing on mobile devices, a QR code can be generated 
 
 ## Requirements
 
-- Works best with a recent version of node/npm, but tested with node 6.14 LTS
+- Works best with a recent version of node/npm, but tested with node 6.15 LTS
 - Tested on AEM 6.1, 6.2, 6.3 and 6.4
 - To be able to see the error messages from AEM, at least version 1.0.0 of the Sling Log Tracer is needed. AEM 6.2 and before have an older version or don't have the bundle at all. Versions of Log Tracer since 1.0.2 can also be installed on those older versions of AEM (6.0+ according to the [ticket](https://issues.apache.org/jira/browse/SLING-5762)). See [Updating Sling Log Tracer](#updating-sling-log-tracer) for instructions.
 
