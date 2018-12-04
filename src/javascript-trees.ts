@@ -1,6 +1,7 @@
 import chalk from "chalk";
 import rpn from "request-promise-native";
 import { ClientlibTree, IClientlibTreeConfig } from "./clientlib-tree";
+import { normalisePath } from "./utils";
 
 interface IJsLibs extends Map<string, string[]> {
   // We only need to specify the types for the map
@@ -113,7 +114,7 @@ export class JavascriptTrees {
    */
   public resetFiles(filePaths?: string[]) {
     if (filePaths) {
-      filePaths.forEach(filePath => this.files.delete(filePath));
+      filePaths.forEach(filePath => this.files.delete(normalisePath(filePath)));
     } else {
       this.files.clear();
     }

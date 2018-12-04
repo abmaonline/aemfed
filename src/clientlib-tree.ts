@@ -1,6 +1,7 @@
 import chalk from "chalk";
 import rpn from "request-promise-native";
 import { JavascriptTrees } from "./javascript-trees";
+import { normalisePath } from "./utils";
 // const syncRequest = require('sync-request');
 
 // html source document
@@ -42,7 +43,7 @@ export class ClientlibTree {
   public jsTrees: JavascriptTrees;
   private name: string;
   private server: string;
-  private path: string;
+  private dumpLibsPath: string;
   private libs: ILibs;
 
   constructor(config?: IClientlibTreeConfig) {
@@ -53,7 +54,8 @@ export class ClientlibTree {
     };
     this.name = config.name;
     this.server = config.server;
-    this.path = config.dumpLibsPath || "/libs/granite/ui/content/dumplibs.html";
+    this.dumpLibsPath =
+      config.dumpLibsPath || "/libs/granite/ui/content/dumplibs.html";
     this.libs = new Map();
     this.jsTrees = new JavascriptTrees(config, this);
   }
@@ -62,7 +64,7 @@ export class ClientlibTree {
     const sw = Date.now();
 
     let swInner = Date.now();
-    return rpn(this.server + this.path).then((html: string) => {
+    return rpn(this.server + this.dumpLibsPath).then((html: string) => {
       console.log(
         chalk`[{blue ${this.name}}] Get data from server: ${(
           Date.now() - swInner
@@ -108,18 +110,23 @@ export class ClientlibTree {
   //     return promise;
   // }
 
-  public findClientlibs(path: string): ILib[] {
+  public findClientlibs(filePathRelative: string): ILib[] {
     // path is w/o extension for now
+    // keys in libs are from jcr, so path needs forward slashes (also on Windows)
+    let jcrPath = normalisePath(filePathRelative);
+    // Add leading slash if missing
+    jcrPath = jcrPath.startsWith("/") ? jcrPath : "/" + jcrPath;
+
     // Embedding works for only one level (at least in 6_1), so no recursion needed
     const result: ILib[] = [];
     for (const [key, lib] of this.libs) {
       // Add lib itself
-      if (lib.name === path) {
+      if (lib.name === jcrPath) {
         // console.log(`Add lib itself`);
         result.push(lib);
       }
       // Add if it is embedded in lib
-      if (lib.embedded.indexOf(path) > -1) {
+      if (lib.embedded.indexOf(jcrPath) > -1) {
         // console.log(lib);
         result.push(lib);
       }
@@ -129,13 +136,15 @@ export class ClientlibTree {
 
   /**
    * Try to find the proxy target for a proxied client lib (starts with /etc/clientlibs/), but also works for non proxied libs
-   * @param path Path to clientlib without extension
+   * @param jcrPath Path to clientlib without extension
    */
-  public findProxyTarget(path: string): string | undefined {
+  public findProxyTarget(jcrPath: string): string | undefined {
     // TODO allow extension and check with lib.js or lib.css?
     const proxyPaths = ["/apps/", "/etc/", "/libs/"]; // TODO get from HTML Lib config?
-    const match = /^(\/etc\.clientlibs\/)(.*)/.exec(path);
-    const paths = match ? proxyPaths.map(prefix => prefix + match[2]) : [path];
+    const match = /^(\/etc\.clientlibs\/)(.*)/.exec(jcrPath);
+    const paths = match
+      ? proxyPaths.map(prefix => prefix + match[2])
+      : [jcrPath];
     for (const libPath of paths) {
       const lib = this.libs.get(libPath);
       if (lib) {
