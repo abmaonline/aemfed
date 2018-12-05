@@ -33,8 +33,8 @@ export class StyleTree {
 
     const model: IModel = {
       children: [],
-      filePath: path.sep,
-      id: path.sep,
+      filePath: "",
+      id: "",
       isMissing: false,
       type: "root"
     };
@@ -155,9 +155,11 @@ export class StyleTree {
             const sourceLine = line.trim();
             // Check if not commented out
             if (sourceLine.indexOf("//") !== 0) {
-              // Test if 'absolute'
+              // Test if 'absolute' within jcr:
+              // If so, make relative to root (otherwise it will start with X:\ on Windows)
+              // Otherwise prefix with relative path for css.txt and base-prefix
               const sourceFileRelative = path.isAbsolute(sourceLine)
-                ? sourceLine
+                ? path.relative(path.sep, sourceLine)
                 : path.join(basePathRelative, prefix, sourceLine);
 
               const sourceModel = this.getSourceModel(sourceFileRelative);
@@ -238,13 +240,16 @@ export class StyleTree {
     this._getLessTree("", true);
     const clientlibCssPathsRelative: string[] = [];
 
-    const nodes = rootNode.all(node => node.model.id === filePathRelative);
+    const nodes = rootNode.all(
+      node => node.model.filePath === filePathRelative
+    );
     nodes.forEach(node => {
       // TODO use type for functionality
       const nodePath = node.getPath();
       if (nodePath && nodePath.length > pathIndex.clientlib) {
         const clientlibNode = nodePath[pathIndex.clientlib];
-        const clientlibCss = path.dirname(clientlibNode.model.id) + ".css";
+        const clientlibCss =
+          path.dirname(clientlibNode.model.filePath) + ".css";
         if (clientlibCssPathsRelative.indexOf(clientlibCss) === -1) {
           clientlibCssPathsRelative.push(clientlibCss);
         }
@@ -282,10 +287,10 @@ export class StyleTree {
         // TODO use cache for models, so we can reuse it if it was imported in
         // multiple files
         // Is cloning needed, would be nasty with children?
-        newModel = this.getSourceModel(node.model.id);
+        newModel = this.getSourceModel(node.model.filePath);
       } else if (["csstxt"].indexOf(node.model.type) > -1) {
         console.log("updateClientlibs csstxt");
-        newModel = this.getCssTxtModel(node.model.id);
+        newModel = this.getCssTxtModel(node.model.filePath);
       }
 
       // TODO walk newNode and return a list of all updated subs, so we can check for it before
@@ -306,7 +311,9 @@ export class StyleTree {
         const parentNode = node.parent;
         const index = node.getIndex();
         node.drop();
-        parentNode.addChildAtIndex(newNode, index);
+        if (parentNode) {
+          parentNode.addChildAtIndex(newNode, index);
+        }
       }
 
       return newModel;
