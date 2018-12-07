@@ -31,6 +31,8 @@ If you don't have a `package.json` (npm configuration file) for your project, yo
 npm install aemfed --global
 ```
 
+When using a global install with PowerShell on Windows, please check the [Issues](#issues) section for the limitations.
+
 If you do have a `package.json` for your project, you can add it as a dev dependency:
 
 ```sh
@@ -52,7 +54,7 @@ aemfed -h
 Run with specific server, ignore pattern (to ignore IntelliJ temp files) and folder to watch (at the moment this has to be the actual `jcr_root` folder for your project):
 
 ```sh
-aemfed -t "http://admin:admin@localhost:4502" -e "**/*___jb_+(old|tmp)___" -w "ui.apps/src/main/content/jcr_root/"
+aemfed -t "http://admin:admin@localhost:4502" -w "ui.apps/src/main/content/jcr_root/"
 ```
 
 ### Start with a `package.json` install
@@ -75,10 +77,10 @@ Since you already have a `package.json` in your project, adding the startup comm
 
 ```json
 "devDependencies": {
-  "aemfed": "^0.0.5"
+  "aemfed": "^0.0.8"
 },
 "scripts": {
-    "aemfed": "aemfed -t \"http://admin:admin@localhost:4502\" -e \"**/*___jb_+(old|tmp)___\" -w \"ui.apps/src/main/content/jcr_root/\""
+    "aemfed": "aemfed -t \"http://admin:admin@localhost:4502\" -w \"ui.apps/src/main/content/jcr_root/\""
 },
 ```
 
@@ -171,6 +173,7 @@ To speedup developing and testing on mobile devices, a QR code can be generated 
 
 ## Requirements
 
+- Runs on macOS, Linux and Windows
 - Works best with a recent version of node/npm, but tested with node 6.15 LTS
 - Tested on AEM 6.1, 6.2, 6.3 and 6.4
 - To be able to see the error messages from AEM, at least version 1.0.0 of the Sling Log Tracer is needed. AEM 6.2 and before have an older version or don't have the bundle at all. Versions of Log Tracer since 1.0.2 can also be installed on those older versions of AEM (6.0+ according to the [ticket](https://issues.apache.org/jira/browse/SLING-5762)). See [Updating Sling Log Tracer](#updating-sling-log-tracer) for instructions.
@@ -190,6 +193,7 @@ To speedup developing and testing on mobile devices, a QR code can be generated 
 
 - aemsync does not respect your projects `filter.xml`, so please be very careful when removing high level items when running aemfed. Changes to root nodes like `/apps`, `/content` and `/etc` are skipped, but when you remove `/etc/clientlibs` from your project (for example after you moved all your clientlibs to proxies in `/apps`) it does exactly that...
 - Using ~ (homedir) in paths to watch does not work as expected when aemfed does all the path processing (paths are surrounded with quotes)
+- When using aemfed globally or with `npx` in PowerShell on Windows, the provided parameters can not contain certain characters (for example `|` in an exclusion pattern), even when they are wrapped in quotes. On Windows global nodejs calls work with a wrapper `CMD` script and PowerShell uses slightly different escaping. Fixes: remove or rewrite parameters w/o problematic characters, use the good old `cmd.exe`, don't use global calls but add it as a script to a package.json, or write a custom `ps1` script to handle this scenario.
 - YUI minification generates errors for each request if there is an error (Less and GCC generate errors only first time after a resource was changed)
 - When installing the [WKND tutorial](https://github.com/Adobe-Marketing-Cloud/aem-guides-wknd) in a clean AEM 6.3 SP2 or AEM 6.4, it is possible the changes pushed to AEM are not present in the final clientlibs loaded into the pages. Performing a one time clientlib rebuild could fix this: http://localhost:4502/libs/granite/ui/content/dumplibs.rebuild.html and click 'Invalidate Caches' & 'Rebuild Libraries' (last step can take up to 15 minutes)
 - When inspecting Less imports to determine dependencies, very simple logic is used to process the file locations in the `@import`. Resulting in a number of edge cases not working as expected (and throw `ENOENT` exceptions):

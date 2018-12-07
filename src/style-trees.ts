@@ -34,7 +34,7 @@ export class StyleTrees {
   public findClientlibs(absoluteFilePaths: string[]) {
     // also need the source path before we can start looking?
     // use path to select correct styleTree from map
-    const clientlibCssPaths: string[] = [];
+    const clientlibCssPathsRelative: string[] = [];
 
     // get all root paths
     // check if starts with one of them
@@ -45,19 +45,21 @@ export class StyleTrees {
         if (filePath.indexOf(rootDir) === 0) {
           // Found correct styleTree
           const styleTree = this.styleTrees[rootDir];
-          const relativeJcrPath = filePath.replace(rootDir, "");
-          const relatedClientlibCss = styleTree.findClientlibs(relativeJcrPath);
+          const filePathRelative = path.relative(rootDir, filePath);
+          const relatedClientlibCssFilesRelative = styleTree.findClientlibs(
+            filePathRelative
+          );
           // Test if found clientlibs are already in result set, if not: add
-          relatedClientlibCss.forEach(clientlib => {
-            if (clientlibCssPaths.indexOf(clientlib) === -1) {
-              clientlibCssPaths.push(clientlib);
+          relatedClientlibCssFilesRelative.forEach(clientlib => {
+            if (clientlibCssPathsRelative.indexOf(clientlib) === -1) {
+              clientlibCssPathsRelative.push(clientlib);
             }
           });
         }
       });
     });
 
-    return clientlibCssPaths;
+    return clientlibCssPathsRelative;
   }
 }
 

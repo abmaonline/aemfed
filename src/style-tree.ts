@@ -33,8 +33,8 @@ export class StyleTree {
 
     const model: IModel = {
       children: [],
-      filePath: path.sep,
-      id: path.sep,
+      filePath: "",
+      id: "",
       isMissing: false,
       type: "root"
     };
@@ -56,28 +56,25 @@ export class StyleTree {
 
         // `files` is an array of absolute file paths
         const rootFilesRegex = /((css|js)\.txt|(\.content\.xml))$/i;
-        const contentXmlFilesJcr: string[] = [];
-        const jsTxtFilesJcr: string[] = [];
-        const cssTxtFilesJcr: string[] = [];
-        const otherFilesJcr: string[] = [];
+        const contentXmlFilesRelative: string[] = [];
+        const jsTxtFilesRelative: string[] = [];
+        const cssTxtFilesRelative: string[] = [];
+        const otherFilesRelative: string[] = [];
 
         files.forEach(filePath => {
-          // Make relative for jcrRootDir, but add / so it is absolute within aem
-          const filePathJcr = path.join(
-            path.sep,
-            path.relative(this.jcrRootDir, filePath)
-          );
+          // Make relative for jcrRootDir
+          const filePathRelative = path.relative(this.jcrRootDir, filePath);
           let match;
           // tslint:disable-next-line:no-conditional-assignment
-          if ((match = rootFilesRegex.exec(filePathJcr)) !== null) {
+          if ((match = rootFilesRegex.exec(filePathRelative)) !== null) {
             if (match[3]) {
-              contentXmlFilesJcr.push(filePathJcr);
+              contentXmlFilesRelative.push(filePathRelative);
             } else if (match[2] === "css") {
-              cssTxtFilesJcr.push(filePathJcr);
+              cssTxtFilesRelative.push(filePathRelative);
             } else if (match[2] === "js") {
-              jsTxtFilesJcr.push(filePathJcr);
+              jsTxtFilesRelative.push(filePathRelative);
             } else {
-              otherFilesJcr.push(filePathJcr);
+              otherFilesRelative.push(filePathRelative);
             }
           }
         });
@@ -86,17 +83,17 @@ export class StyleTree {
 
         swInner = Date.now();
 
-        cssTxtFilesJcr.forEach(cssTxtFileJcr => {
+        cssTxtFilesRelative.forEach(cssTxtFileRelative => {
           // Test if css.txt also has a clientlib definition, otherwise skip it
-          const contentFileJcr = path.join(
-            path.dirname(cssTxtFileJcr),
+          const contentFileRelative = path.join(
+            path.dirname(cssTxtFileRelative),
             ".content.xml"
           );
-          if (contentXmlFilesJcr.indexOf(contentFileJcr) === -1) {
+          if (contentXmlFilesRelative.indexOf(contentFileRelative) === -1) {
             return;
           }
 
-          const cssTxtModel = this.getCssTxtModel(cssTxtFileJcr);
+          const cssTxtModel = this.getCssTxtModel(cssTxtFileRelative);
           model.children.push(cssTxtModel);
         });
 
@@ -118,14 +115,14 @@ export class StyleTree {
     });
   }
 
-  public findClientlibs(filePathJcr: string) {
-    return this.findClientlibsInternal(this.rootNode, filePathJcr);
+  public findClientlibs(filePathRelative: string) {
+    return this.findClientlibsInternal(this.rootNode, filePathRelative);
   }
 
   // === Other privates ===
 
-  private getCssTxtModel(cssTxtFileJcr: string): IModel {
-    const basePathJcr = path.dirname(cssTxtFileJcr);
+  private getCssTxtModel(cssTxtFileRelative: string): IModel {
+    const basePathRelative = path.dirname(cssTxtFileRelative);
 
     // TODO css.txt is always pulled from the file system, so always present
     // no need to handle new ones here?
@@ -134,8 +131,8 @@ export class StyleTree {
     // Check if we can see this in browser sync?
     const cssTxtModel: IModel = {
       children: [],
-      filePath: cssTxtFileJcr,
-      id: cssTxtFileJcr,
+      filePath: cssTxtFileRelative,
+      id: cssTxtFileRelative,
       isMissing: false,
       type: "csstxt"
     };
@@ -143,7 +140,7 @@ export class StyleTree {
     try {
       // TODO create function that returns array of filenames, maybe make module?
       const contents = fs.readFileSync(
-        path.join(this.jcrRootDir, cssTxtFileJcr),
+        path.join(this.jcrRootDir, cssTxtFileRelative),
         "utf8"
       );
       const arrayOfLines = contents.match(/[^\r\n]+/g);
@@ -158,12 +155,14 @@ export class StyleTree {
             const sourceLine = line.trim();
             // Check if not commented out
             if (sourceLine.indexOf("//") !== 0) {
-              // Test if 'absolute'
-              const sourceFileJcr = path.isAbsolute(sourceLine)
-                ? sourceLine
-                : path.join(basePathJcr, prefix, sourceLine);
+              // Test if 'absolute' within jcr:
+              // If so, make relative to root (otherwise it will start with X:\ on Windows)
+              // Otherwise prefix with relative path for css.txt and base-prefix
+              const sourceFileRelative = path.isAbsolute(sourceLine)
+                ? path.relative(path.sep, sourceLine)
+                : path.join(basePathRelative, prefix, sourceLine);
 
-              const sourceModel = this.getSourceModel(sourceFileJcr);
+              const sourceModel = this.getSourceModel(sourceFileRelative);
               cssTxtModel.children.push(sourceModel);
             }
           }
@@ -178,13 +177,13 @@ export class StyleTree {
     return cssTxtModel;
   }
 
-  private getSourceModel(sourceFileJcr: string): IModel {
-    sourceFileJcr = path.normalize(sourceFileJcr);
+  private getSourceModel(sourceFileRelative: string): IModel {
+    sourceFileRelative = path.normalize(sourceFileRelative);
 
     const sourceModel: IModel = {
       children: [],
-      filePath: sourceFileJcr,
-      id: sourceFileJcr,
+      filePath: sourceFileRelative,
+      id: sourceFileRelative,
       isMissing: false,
       type: "source"
     };
@@ -193,9 +192,9 @@ export class StyleTree {
 
     // TODO also include css imports? But tricky with lessTree, since it always adds .less
     // and css imports are bad practice anyway
-    if (path.extname(sourceFileJcr) === ".less") {
+    if (path.extname(sourceFileRelative) === ".less") {
       sourceModel.type = "less";
-      const newLessTree = this._getLessTree(sourceFileJcr);
+      const newLessTree = this._getLessTree(sourceFileRelative);
       const importModels = this.lessTree2Model(newLessTree);
       // Skip root, since it is current source file
       sourceModel.children = importModels.children;
@@ -205,15 +204,12 @@ export class StyleTree {
   }
 
   private lessTree2Model(newLessTree: lessTree.LessTree): IModel {
-    const filePathJcr = path.join(
-      path.sep,
-      path.relative(this.jcrRootDir, newLessTree.path)
-    );
+    const filePathRelative = path.relative(this.jcrRootDir, newLessTree.path);
 
     const model: IModel = {
       children: [],
-      filePath: filePathJcr,
-      id: filePathJcr,
+      filePath: filePathRelative,
+      id: filePathRelative,
       isMissing: !newLessTree.contents,
       type: "less-import"
     };
@@ -230,7 +226,7 @@ export class StyleTree {
 
   private findClientlibsInternal(
     rootNode: treeModel.Node<IModel>,
-    filePathJcr: string
+    filePathRelative: string
   ): string[] {
     enum pathIndex {
       root,
@@ -242,17 +238,20 @@ export class StyleTree {
     const sw = Date.now();
     // Reset cache
     this._getLessTree("", true);
-    const clientlibCssPaths: string[] = [];
+    const clientlibCssPathsRelative: string[] = [];
 
-    const nodes = rootNode.all(node => node.model.id === filePathJcr);
+    const nodes = rootNode.all(
+      node => node.model.filePath === filePathRelative
+    );
     nodes.forEach(node => {
       // TODO use type for functionality
       const nodePath = node.getPath();
       if (nodePath && nodePath.length > pathIndex.clientlib) {
         const clientlibNode = nodePath[pathIndex.clientlib];
-        const clientlibCss = path.dirname(clientlibNode.model.id) + ".css";
-        if (clientlibCssPaths.indexOf(clientlibCss) === -1) {
-          clientlibCssPaths.push(clientlibCss);
+        const clientlibCss =
+          path.dirname(clientlibNode.model.filePath) + ".css";
+        if (clientlibCssPathsRelative.indexOf(clientlibCss) === -1) {
+          clientlibCssPathsRelative.push(clientlibCss);
         }
       }
       if (node.hasChildren() || node.model.isMissing) {
@@ -261,14 +260,14 @@ export class StyleTree {
     });
 
     // TODO do something for new css.txt?
-    if (nodes.length === 0 && path.basename(filePathJcr) === "css.txt") {
-      console.log("Missing css.txt, so add", filePathJcr);
-      this.updateClientlibs(rootNode, filePathJcr);
+    if (nodes.length === 0 && path.basename(filePathRelative) === "css.txt") {
+      console.log("Missing css.txt, so add", filePathRelative);
+      this.updateClientlibs(rootNode, filePathRelative);
     }
 
     // console.log('time findClientlibs', (Date.now() - sw) / 1000);
     // console.log(clientlibCssPaths);
-    return clientlibCssPaths;
+    return clientlibCssPathsRelative;
   }
 
   // TODO nicer way of handling new css.txt? It's own function maybe?
@@ -288,10 +287,10 @@ export class StyleTree {
         // TODO use cache for models, so we can reuse it if it was imported in
         // multiple files
         // Is cloning needed, would be nasty with children?
-        newModel = this.getSourceModel(node.model.id);
+        newModel = this.getSourceModel(node.model.filePath);
       } else if (["csstxt"].indexOf(node.model.type) > -1) {
         console.log("updateClientlibs csstxt");
-        newModel = this.getCssTxtModel(node.model.id);
+        newModel = this.getCssTxtModel(node.model.filePath);
       }
 
       // TODO walk newNode and return a list of all updated subs, so we can check for it before
@@ -312,7 +311,9 @@ export class StyleTree {
         const parentNode = node.parent;
         const index = node.getIndex();
         node.drop();
-        parentNode.addChildAtIndex(newNode, index);
+        if (parentNode) {
+          parentNode.addChildAtIndex(newNode, index);
+        }
       }
 
       return newModel;
@@ -343,11 +344,14 @@ export class StyleTree {
   }
 
   // === Private statics ===
-  private _getLessTree(file: string, resetCache?: boolean): lessTree.LessTree {
+  private _getLessTree(
+    fileRelative: string,
+    resetCache?: boolean
+  ): lessTree.LessTree {
     resetCache = !!resetCache; // Cast to explicit boolean
     // TODO make async and paralel
     const tree = lessTree(
-      path.join(this.jcrRootDir, file),
+      path.join(this.jcrRootDir, fileRelative),
       this.jcrRootDir,
       resetCache
     );

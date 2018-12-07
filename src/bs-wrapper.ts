@@ -1045,10 +1045,9 @@ export function reload(host: string, inputList: string[]): void {
         .then(() => {
           // console.log(`Init clientlibs finished`);
           console.log(
-            instance.name +
-              ": Rebuild clientlib tree: " +
-              (Date.now() - sw) +
-              " ms"
+            chalk`[{blue ${instance.name}}] Rebuild clientlib tree: ${(
+              Date.now() - sw
+            ).toString()} ms`
           );
         })
         .catch(reason => {
