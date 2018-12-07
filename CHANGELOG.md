@@ -1,5 +1,11 @@
 # aemfed changelog
 
+## 0.1.0
+
+- Add Windows support for all features. (Running a global or `npx` install in PowerShell has some limitations, see the Issues section in the [README.md](README.md#issues) for more details)
+- When aemfed mentions an update is available and it is part of your `package.json`, the command presented to perform the update will have no effect. This is because the version numbers are still < 1.0.0, so the default update behavior is more conservative (see [npm-semver - Caret Ranges ^1.2.3 ^0.2.5 ^0.0.4](https://docs.npmjs.com/misc/semver#caret-ranges-123-025-004) for more details). Run `npm i aemfed@latest` to force an update anyway. For global installs this shouldn't be an issue
+- Updated dependencies
+
 ## 0.0.8
 
 - QR code support in the browser console. Type `qr()` in the console of browsers connected to aemfed, to get an ASCII-art QR code with the active url in it, for easier synchronisation with mobile devices. At the moment uses an ES6 target (just as the rest of the project), so IE11 and earlier are not supported

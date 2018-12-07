@@ -119,6 +119,10 @@ export function init(): void {
   console.log("Interval:", pushInterval);
   console.log("Exclude:", exclude);
   separate();
+  console.log(
+    chalk`Something missing or not working as expected, open an issue on GitHub: {yellow https://github.com/abmaonline/aemfed/issues}`
+  );
+  separate();
 
   // TODO after restructuring bs-wrapper include in initialization chain
   UpdateCheck.check(packageInfo)
