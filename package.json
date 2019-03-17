@@ -17,11 +17,11 @@
     "vendor"
   ],
   "engines": {
-    "node": ">=6.15.1"
+    "node": ">=6.17.0"
   },
   "dependencies": {
     "aemsync": "https://github.com/abmaonline/aemsync/tarball/a2bed54",
-    "boxen": "^2.1.0",
+    "boxen": "^3.0.0",
     "browser-sync": "^2.26.3",
     "chalk": "^2.4.2",
     "decode-html": "^2.0.0",
@@ -29,21 +29,21 @@
     "is-installed-globally": "^0.1.0",
     "less-tree": "https://github.com/abmaonline/less-tree/tarball/58baecb",
     "minimist": "^1.2.0",
-    "opn": "^5.4.0",
+    "opn": "^5.5.0",
     "path": "^0.12.7",
     "proxy-agent": "^3.0.3",
     "recursive-readdir": "^2.2.2",
     "request": "^2.88.0",
-    "request-promise-native": "^1.0.5",
+    "request-promise-native": "^1.0.7",
     "tree-model": "^1.0.7",
     "util.promisify": "^1.0.0"
   },
   "devDependencies": {
     "@types/chokidar": "^1.7.5",
-    "@types/graceful-fs": "^4.1.2",
+    "@types/graceful-fs": "^4.1.3",
     "@types/micromatch": "^3.1.0",
     "@types/minimist": "^1.2.0",
-    "@types/node": "6.14.2",
+    "@types/node": "6.14.4",
     "@types/opn": "^5.1.0",
     "@types/recursive-readdir": "^2.2.0",
     "@types/request": "^2.48.1",
@@ -53,9 +53,9 @@
     "husky": "^1.3.1",
     "precise-commits": "^1.0.2",
     "prettier": "1.16.4",
-    "tslint": "^5.12.1",
+    "tslint": "^5.14.0",
     "tslint-config-prettier": "1.18.0",
-    "typescript": "^3.3.1"
+    "typescript": "^3.3.3333"
   },
   "scripts": {
     "prepare": "npm run build",

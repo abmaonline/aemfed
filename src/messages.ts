@@ -1,4 +1,4 @@
-import boxen from "boxen";
+import * as boxen from "boxen";
 import chalk from "chalk";
 import gfs from "graceful-fs";
 import isInstalledGlobally from "is-installed-globally";
@@ -101,11 +101,11 @@ export function formatUpdateMessage(update?: IUpdateCheck) {
     const boxenOpts: boxen.Options = {
       align: "center",
       borderColor: "yellow",
-      borderStyle: "round",
+      borderStyle: boxen.BorderStyle.Round,
       margin: 1,
       padding: 1
     };
-    return boxen(message, boxenOpts);
+    return boxen.default(message, boxenOpts);
   }
 }
 
