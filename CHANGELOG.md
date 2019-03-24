@@ -1,5 +1,9 @@
 # aemfed changelog
 
+## 0.1.1
+
+- Updated dependencies to fix a number of security warnings
+
 ## 0.1.0
 
 - Add Windows support for all features. (Running a global or `npx` install in PowerShell has some limitations, see the Issues section in the [README.md](README.md#issues) for more details)
