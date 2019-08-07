@@ -120,7 +120,7 @@ export function init(): void {
   console.log("Exclude:", exclude);
   separate();
   console.log(
-    chalk`Something missing or not working as expected, open an issue on GitHub: {yellow https://github.com/abmaonline/aemfed/issues}`
+    chalk`If something is missing or not working as expected, open an issue on GitHub: {yellow https://github.com/abmaonline/aemfed/issues}`
   );
   separate();
 
