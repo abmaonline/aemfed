@@ -20,8 +20,8 @@
     "node": ">=6.17.0"
   },
   "dependencies": {
+    "@abmaonline/aemsync": "^3.1.0",
     "@abmaonline/less-tree": "^0.1.0",
-    "aemsync": "https://github.com/abmaonline/aemsync/tarball/a2bed54",
     "boxen": "^3.0.0",
     "browser-sync": "^2.26.7",
     "chalk": "^2.4.2",

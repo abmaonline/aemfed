@@ -1,4 +1,4 @@
-import { Pipeline, Watcher } from "aemsync";
+import { Pipeline, Watcher } from "@abmaonline/aemsync";
 import chalk from "chalk";
 import decode from "decode-html";
 import gfs from "graceful-fs";
