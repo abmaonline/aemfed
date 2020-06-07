@@ -20,6 +20,7 @@
     "node": ">=6.17.0"
   },
   "dependencies": {
+    "@abmaonline/less-tree": "^0.1.0",
     "aemsync": "https://github.com/abmaonline/aemsync/tarball/a2bed54",
     "boxen": "^3.0.0",
     "browser-sync": "^2.26.7",
@@ -27,7 +28,6 @@
     "decode-html": "^2.0.0",
     "graceful-fs": "^4.1.15",
     "is-installed-globally": "^0.1.0",
-    "less-tree": "https://github.com/abmaonline/less-tree/tarball/58baecb",
     "minimist": "^1.2.5",
     "opn": "^5.5.0",
     "path": "^0.12.7",

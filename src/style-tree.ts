@@ -1,6 +1,6 @@
 // var less = require('less');
+import lessTree from "@abmaonline/less-tree";
 import fs from "fs";
-import lessTree from "less-tree";
 import path from "path";
 import recursive from "recursive-readdir";
 import treeModel from "tree-model";
