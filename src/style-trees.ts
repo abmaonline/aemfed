@@ -15,7 +15,7 @@ export class StyleTrees {
     // for each dir, create styleTree and call init
     // uses promises, so return all()
     // stored in map using path => styleTree?
-    const promises: Array<Promise<void>> = [];
+    const promises: Promise<void>[] = [];
     // TODO convert to map()
     this.relativeJcrPaths.forEach(jcrPath => {
       // Path can be relative or absolute, so convert always to absolute

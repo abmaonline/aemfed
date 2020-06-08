@@ -569,7 +569,7 @@ function generateReport(
         .filter(message => typeof message === "string") as string[]);
 
   // All sourceRefs are present, last fix round
-  const promises: Array<Promise<messages.ISourceFileReference>> = [];
+  const promises: Promise<messages.ISourceFileReference>[] = [];
   for (const { sourceRef, profile } of reportMessages) {
     if (profile && sourceRef) {
       if (typeof profile.fixJcrRef === "function") {
@@ -733,7 +733,7 @@ export function create(args: IWrapperConfig): Promise<void> {
   // Create promises to add instance state
   // TODO handle unresponsive server(s)
   const swInstanceState = Date.now();
-  const promisesState: Array<Promise<any>> = [];
+  const promisesState: Promise<any>[] = [];
   hosts.forEach(host => {
     const instance = instances[host];
     promisesState.push(
@@ -802,7 +802,7 @@ export function create(args: IWrapperConfig): Promise<void> {
     // Setup clientlib stuff
     const swClientlibs = Date.now();
 
-    const promisesClientlibs: Array<Promise<any>> = [];
+    const promisesClientlibs: Promise<any>[] = [];
     hosts.forEach(host => {
       const instance = instances[host];
       promisesClientlibs.push(instance.clientlibTree.init());
