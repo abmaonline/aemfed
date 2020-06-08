@@ -752,18 +752,12 @@ export function create(args: IWrapperConfig): Promise<void> {
                 if (!tracerEnabled) {
                   // TODO move path to constant for reuse in call getting json
                   console.log(
-                    chalk`[{blue ${
-                      instance.name
-                    }}] {cyan Apache Sling Log Tracer is not enabled, so errors from compiling and minifying Less and Javascript by AEM cannot be shown. To enable it, go to [{yellow ${
-                      instance.server
-                    }/system/console/configMgr/org.apache.sling.tracer.internal.LogTracer}] and turn on both 'Enabled' and 'Recording Servlet Enabled'. No restart of aemfed needed}.`
+                    chalk`[{blue ${instance.name}}] {cyan Apache Sling Log Tracer is not enabled, so errors from compiling and minifying Less and Javascript by AEM cannot be shown. To enable it, go to [{yellow ${instance.server}/system/console/configMgr/org.apache.sling.tracer.internal.LogTracer}] and turn on both 'Enabled' and 'Recording Servlet Enabled'. No restart of aemfed needed}.`
                   );
                 }
               } else {
                 console.log(
-                  chalk`[{blue ${
-                    instance.name
-                  }}] {cyan Apache Sling Log Tracer config was not found}.`
+                  chalk`[{blue ${instance.name}}] {cyan Apache Sling Log Tracer config was not found}.`
                 );
               }
               return instance;
@@ -774,18 +768,14 @@ export function create(args: IWrapperConfig): Promise<void> {
               ? `too old (version ${tracerBundle.version})`
               : `not installed`;
             console.error(
-              chalk`[{blue ${
-                instance.name
-              }}] {cyan Apache Sling Log Tracer bundle is ${reason}. At least version 1.0.0 is needed for aemfed to intercept AEM error messages. AEM 6.2 and before can install and run 1.0.2 or newer, see the 'Updating Sling Log Tracer' section in the README for instructions}.`
+              chalk`[{blue ${instance.name}}] {cyan Apache Sling Log Tracer bundle is ${reason}. At least version 1.0.0 is needed for aemfed to intercept AEM error messages. AEM 6.2 and before can install and run 1.0.2 or newer, see the 'Updating Sling Log Tracer' section in the README for instructions}.`
             );
             return instance;
           }
         })
         .catch(err => {
           console.error(
-            chalk`[{blue ${
-              instance.name
-            }}] [{red ERROR}] Something went wrong:`,
+            chalk`[{blue ${instance.name}}] [{red ERROR}] Something went wrong:`,
             err
           );
         })
@@ -1022,9 +1012,7 @@ export function reload(host: string, inputList: string[]): void {
     // TODO wait with next push/update until this is done
     if (specialPaths.length > 0) {
       console.log(
-        chalk`[{blue ${
-          instance.name
-        }}] Special paths were changed, so rebuild clientlib tree`
+        chalk`[{blue ${instance.name}}] Special paths were changed, so rebuild clientlib tree`
       );
 
       // Something changed in the structure, so rebuild all clientlib stuff
@@ -1052,9 +1040,7 @@ export function reload(host: string, inputList: string[]): void {
         })
         .catch(reason => {
           console.log(
-            chalk`[{blue ${
-              instance.name
-            }}] [{red ERROR}] Rebuild rejected: ${reason}`
+            chalk`[{blue ${instance.name}}] [{red ERROR}] Rebuild rejected: ${reason}`
           );
         });
     }
