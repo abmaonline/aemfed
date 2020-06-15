@@ -1,5 +1,12 @@
 # aemfed changelog
 
+## 0.1.2-rc.0
+
+- Probably the last version to support Node.js 6. This version of Node.js is EoL for over a year, a lot of libraries we use dropped support and almost no one uses it anyway
+- Updated dependencies to fix a number of security warnings ([#22](https://github.com/abmaonline/aemfed/pull/22) by [jegli](https://github.com/jegli))
+- Moved customized dependencies to their own scoped npm packages, instead of github tarballs, to make integration in development workflows easier and reduce errors from old `.npmrc` files
+- Create clearer log messages during startup ([#9](https://github.com/abmaonline/aemfed/pull/9) by [ryanholder](https://github.com/ryanholder))
+
 ## 0.1.1
 
 - Updated dependencies to fix a number of security warnings
