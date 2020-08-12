@@ -23,7 +23,7 @@
     "@abmaonline/aemsync": "^3.1.0",
     "@abmaonline/less-tree": "^0.1.0",
     "boxen": "^3.2.0",
-    "browser-sync": "^2.26.7",
+    "browser-sync": "^2.26.12",
     "chalk": "^2.4.2",
     "decode-html": "^2.0.0",
     "graceful-fs": "^4.2.4",
