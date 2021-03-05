@@ -20,7 +20,7 @@ function separate() {
 // Command line options
 const MSG_HELP = `Usage: aemfed [OPTIONS]
 Options:
-  -t targets           Default is http://admin:admin@localhost:4502
+  -t targets           Default is from AEMFED_TARGETS evironment variable otherwise http://admin:admin@localhost:4502
   -p proxy_port        Default is 3000
   -w path_to_watch     Default is current
   -e exclude_filter    Anymatch exclude filter; disabled by default
@@ -94,7 +94,7 @@ export function init(): void {
   }
 
   // TODO make some sort of defaults file and get defaults from there (and use in all modules)
-  const targets: string = args.t || "http://admin:admin@localhost:4502";
+  const targets: string = args.t || process.env.AEMFED_TARGETS || "http://admin:admin@localhost:4502";
   const proxyPort: number = parseInt(args.p, 10) || 3000;
   const pushInterval: number = parseInt(args.i, 10) || 100;
   const exclude: string = args.e || "";
