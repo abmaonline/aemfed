@@ -57,6 +57,13 @@ Run with specific server, ignore pattern (to ignore IntelliJ temp files) and fol
 aemfed -t "http://admin:admin@localhost:4502" -w "ui.apps/src/main/content/jcr_root/"
 ```
 
+Run with specific servers (from AEMFED_TARGETS environment variable);
+
+```sh
+export AEMFED_TARGETS="http://admin:mysecretpassword@localhost:4502,http://admin:mysecretpassword@localhost:4503"
+aemfed -w "ui.apps/src/main/content/jcr_root/"
+```
+
 ### Start with a `package.json` install
 
 The following commands are for a `package.json` install. Since `aemfed` is only available for this project and not globally, we can not use the `aemfed` command directly. You can use `npx` to run modules only available for a specific project.
